@@ -1,0 +1,10 @@
+Package: countimp
+Type: Package
+Title: Multiple Imputation of Incomplete Count Data
+Version: 1.0
+Date: 2013-05-15
+Author: Kristian Kleinke and Jost Reinecke
+Maintainer: Kristian Kleinke <kristian.kleinke@uni-bielefeld.de>
+Depends: R (>= 2.15.0), MASS, mice (>= 2.14), aster, pscl
+Description: This package offers various solutions to multiply impute incomplete count data (ordinary, overdispersed, zero-inflated, multilevel).  All functions work as add-ons to the mice package (Multiple imputation using Fully Conditional Specification). Imputation models and methods are specified in mice, and the actual imputation process is done by mice.
+License: GPL-3
