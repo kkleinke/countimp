@@ -1,0 +1,10 @@
+.Rhistory
+.RData
+.DS_Store
+mice.Rproj
+NAMESPACE
+.Rproj.user
+*.patch
+*~
+*.orig
+*.rej
