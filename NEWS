@@ -1,0 +1,16 @@
+countimp version 2.0.6
++ mice.impute.hnb
+
+
+countimp version 2.0.5
++ mice.impute.nb => problem, when only one predictor was specified (solved)
+
+countimp version 2.0.4 now includes
+two-level predictive mean matching 
+
+countimp version 2.0.3 now includes
+- argument to automatically handle outliers has been renamed (EV = extreme values) for consistency with package ImputeRobust
+
+countimp version 2.0.2 now includes
+- automatic detection of outliers
+

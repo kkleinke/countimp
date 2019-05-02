@@ -1,6 +1,6 @@
 #' Multiple Imputation of Zero-Inflated Two-Level Count Data
 #'
-#' The functions impute zero-inflated multilevel count data based on a two-level Poisson or negative binomial zero-inflation model, either using a Bayesian regression or a bootstrap regression approach (appendix: ``\code{.boot}''). The \code{.noint} variants treat the intercept only as a fixed, but \emph{not} as a random effect. It may be specified, if the intercept is excluded from the random part of the zero model (``\code{.noint.zero}''), the count model (``\code{.noint.count}''), or both models (``\code{.noint.both}''). Zero-inflation models are mixture models and consist of two model components: the zero model (a binomial generalized linear mixed effects model), determining, if the observational unit belongs to zero-inflation process (certain zeros) or to the count process, and the count model (a two-level Poisson or NB model), determining, what count (zero or non-zero) the observational unit has.
+#' The functions impute zero-inflated multilevel count data based on a two-level Poisson or negative binomial hurdle model, either using a Bayesian regression or a bootstrap regression approach (appendix: ``\code{.boot}''). The \code{.noint} variants treat the intercept only as a fixed, but \emph{not} as a random effect. It may be specified, if the intercept is excluded from the random part of the zero model (``\code{.noint.zero}''), the count model (``\code{.noint.count}''), or both models (``\code{.noint.both}''). Hurdle models are mixture models and consist of two model components: the zero model (a binomial generalized linear mixed effects model), determining, if the observational unit has a zero or non-zero value, and the count model (a zero-truncated two-level Poisson or NB model), determining, what non-zero value the observational unit has.
 #'
 #' Model specification details:
 #'    \itemize{
@@ -19,7 +19,7 @@
 #'  \item Draw b* from N(bhat,V(bhat))
 #'  \item Compute predicted probabilities for having a zero vs. non-zero count
 #'  \item Draw imputations (zeros and ones) from a binomial distribution with the respective individual probabilities obtained from step 3.
-#'  \item Fit the count model (a two-level Poisson or NB model) using the \code{glmmTMB} function from package \pkg{glmmTMB}; find bhat, the posterior mean, and V(bhat), the posterior variance of model parameters b.
+#'  \item Fit the count model (a zero-truncated two-level Poisson or NB model) using the \code{glmmTMB} function from package \pkg{glmmTMB}; find bhat, the posterior mean, and V(bhat), the posterior variance of model parameters b.
 #'  \item  Draw b* from N(bhat,V(bhat))
 #'  \item Compute predicted values using parameters b* and replace non-zero imputations (from step 4) by a draw from a zero-truncated NB distribution with mean parameter mu being the count predicted for the respective incomplete case.
 #'  }
@@ -41,13 +41,13 @@
 #' @param EV should automatic outlier handling of imputed values be enabled?  Default is \code{TRUE}: extreme imputations will be identified. These values will be replaced by imputations obtained by predictive mean matching (function \code{mice.impute.midastouch()})
 #' @return Numeric vector of length \code{sum(!ry)} with imputations
 #' @export
-#' @import glmmTMB stats extremevalues
+#' @import glmmTMB aster extremevalues
 #' @importFrom stats as.formula na.pass predict rbinom rnorm vcov
-#' @aliases mice.impute.2l.zinb mice.impute.2l.zinb.boot mice.impute.2l.zinb.noint.both mice.impute.2l.zinb.noint.both.boot mice.impute.2l.zinb.noint.zero mice.impute.2l.zinb.noint.zero.boot mice.impute.2l.zinb.noint.count mice.impute.2l.zinb.noint.count.boot
-#' @aliases mice.impute.2l.zip mice.impute.2l.zip.boot mice.impute.2l.zip.noint.both mice.impute.2l.zip.noint.both.boot mice.impute.2l.zip.noint.zero mice.impute.2l.zip.noint.zero.boot mice.impute.2l.zip.noint.count mice.impute.2l.zip.noint.count.boot
+#' @aliases mice.impute.2l.hnb mice.impute.2l.hnb.boot mice.impute.2l.hnb.noint.both mice.impute.2l.hnb.noint.both.boot mice.impute.2l.hnb.noint.zero mice.impute.2l.hnb.noint.zero.boot mice.impute.2l.hnb.noint.count mice.impute.2l.hnb.noint.count.boot
+#' @aliases mice.impute.2l.hp mice.impute.2l.hp.boot mice.impute.2l.hp.noint.both mice.impute.2l.hp.noint.both.boot mice.impute.2l.hp.noint.zero mice.impute.2l.hp.noint.zero.boot mice.impute.2l.hp.noint.count mice.impute.2l.hp.noint.count.boot
 #' @author Kristian Kleinke
-#' @describeIn mice.impute.2l.zinb Bayesian regression variant; random intercepts
-mice.impute.2l.zinb <-
+#' @describeIn mice.impute.2l.hnb Bayesian regression variant; random intercepts
+mice.impute.2l.hnb <-
   function (y, ry, x, type, intercept.c = TRUE, intercept.z = TRUE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -151,7 +151,7 @@ mice.impute.2l.zinb <-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                   dat[, "Y"] > 0),
-                   family=list(family="nbinom2",link="log"))
+                   family=list(family="truncated_nbinom2",link="log"))
     fit.sum=summary(fit)
     
     fit.sum <- summary(fit)
@@ -166,9 +166,11 @@ mice.impute.2l.zinb <-
     p <- predict(fitmis, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = stats::rnbinom(n=length(p), size = fit.sum$sigma, mu = p)
+    imc = aster::rktnb(length(p), size = fit.sum$sigma, k = 0, mu = p, xpred = 1)
+    
     im[nonzero] <- imc[nonzero]
-    imputed.values<-im
+    imputed.values <- im
+    
     if(EV){
       outliers <- getOutliers(imputed.values, rho = c(0.3, 
                                                       0.3), FLim = c(0.15, 0.85))
@@ -181,14 +183,16 @@ mice.impute.2l.zinb <-
         ry <- !is.na(y)
         new.values <- mice.impute.midastouch(y, ry, x, 
                                              wy = NULL)
-        imputed.values[idx] <- new.values
+        imputed.values[idx] <- new.values  
+      
     }}
+    
     return(imputed.values)
   }
 
 #' @export
-#' @describeIn  mice.impute.2l.zinb bootstrap regression variant; random intercepts
-mice.impute.2l.zinb.boot<-
+#' @describeIn  mice.impute.2l.hnb bootstrap regression variant; random intercepts
+mice.impute.2l.hnb.boot<-
   function (y, ry, x, type, intercept.c = TRUE, intercept.z = TRUE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -293,14 +297,14 @@ mice.impute.2l.zinb.boot<-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                   dat[, "Y"] > 0),
-                   family=list(family="nbinom2",link="log"))
+                   family=list(family="truncated_nbinom2",link="log"))
     fit.sum=summary(fit)
     newdatamis = data.frame(X = x[wy, , drop = FALSE])
     colnames(newdatamis) = nam
     p <- predict(fit, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = stats::rnbinom(n=length(p), size = fit.sum$sigma, mu = p)
+    imc = aster::rktnb(length(p), size = fit.sum$sigma, k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -325,8 +329,8 @@ mice.impute.2l.zinb.boot<-
   }
 
 #' @export
-#' @describeIn  mice.impute.2l.zinb bootstrap regression variant; fixed intercepts
-mice.impute.2l.zinb.noint.both.boot<-
+#' @describeIn  mice.impute.2l.hnb bootstrap regression variant; fixed intercepts
+mice.impute.2l.hnb.noint.both.boot<-
   function (y, ry, x, type, intercept.c = FALSE, intercept.z = FALSE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -431,14 +435,14 @@ mice.impute.2l.zinb.noint.both.boot<-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                   dat[, "Y"] > 0),
-                   family=list(family="nbinom2",link="log"))
+                   family=list(family="truncated_nbinom2",link="log"))
     fit.sum=summary(fit)
     newdatamis = data.frame(X = x[wy, , drop = FALSE])
     colnames(newdatamis) = nam
     p <- predict(fit, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = stats::rnbinom(n=length(p), size = fit.sum$sigma, mu = p)
+    imc = aster::rktnb(length(p), size = fit.sum$sigma, k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -463,8 +467,8 @@ mice.impute.2l.zinb.noint.both.boot<-
   }
 
 #' @export
-#' @describeIn  mice.impute.2l.zinb Bayesian regression variant; fixed intercepts
-mice.impute.2l.zinb.noint.both <-
+#' @describeIn  mice.impute.2l.hnb Bayesian regression variant; fixed intercepts
+mice.impute.2l.hnb.noint.both <-
   function (y, ry, x, type, intercept.c = FALSE, intercept.z = FALSE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -568,7 +572,7 @@ mice.impute.2l.zinb.noint.both <-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                   dat[, "Y"] > 0),
-                   family=list(family="nbinom2",link="log"))
+                   family=list(family="truncated_nbinom2",link="log"))
     fit.sum=summary(fit)
     
     fit.sum <- summary(fit)
@@ -583,7 +587,7 @@ mice.impute.2l.zinb.noint.both <-
     p <- predict(fitmis, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = stats::rnbinom(n=length(p), size = fit.sum$sigma, mu = p)
+    imc = aster::rktnb(length(p), size = fit.sum$sigma, k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -608,8 +612,8 @@ mice.impute.2l.zinb.noint.both <-
   }
 
 #' @export
-#' @describeIn  mice.impute.2l.zinb bootstrap regression variant; fixed intercept in count model
-mice.impute.2l.zinb.noint.count.boot<-
+#' @describeIn  mice.impute.2l.hnb bootstrap regression variant; fixed intercept in count model
+mice.impute.2l.hnb.noint.count.boot<-
   function (y, ry, x, type, intercept.c = FALSE, intercept.z = TRUE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -714,14 +718,14 @@ mice.impute.2l.zinb.noint.count.boot<-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                   dat[, "Y"] > 0),
-                   family=list(family="nbinom2",link="log"))
+                   family=list(family="truncated_nbinom2",link="log"))
     fit.sum=summary(fit)
     newdatamis = data.frame(X = x[wy, , drop = FALSE])
     colnames(newdatamis) = nam
     p <- predict(fit, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = stats::rnbinom(n=length(p), size = fit.sum$sigma, mu = p)
+    imc = aster::rktnb(length(p), size = fit.sum$sigma, k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -746,8 +750,8 @@ mice.impute.2l.zinb.noint.count.boot<-
   }
 
 #' @export
-#' @describeIn  mice.impute.2l.zinb Bayesian regression variant; fixed intercept in count model
-mice.impute.2l.zinb.noint.count <-
+#' @describeIn  mice.impute.2l.hnb Bayesian regression variant; fixed intercept in count model
+mice.impute.2l.hnb.noint.count <-
   function (y, ry, x, type, intercept.c = FALSE, intercept.z = TRUE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -852,7 +856,7 @@ mice.impute.2l.zinb.noint.count <-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                   dat[, "Y"] > 0),
-                   family=list(family="nbinom2",link="log"))
+                   family=list(family="truncated_nbinom2",link="log"))
     fit.sum=summary(fit)
     
     fit.sum <- summary(fit)
@@ -867,7 +871,7 @@ mice.impute.2l.zinb.noint.count <-
     p <- predict(fitmis, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = stats::rnbinom(n=length(p), size = fit.sum$sigma, mu = p)
+    imc = aster::rktnb(length(p), size = fit.sum$sigma, k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -890,10 +894,9 @@ mice.impute.2l.zinb.noint.count <-
     
     return(imputed.values)
   }
-
 #' @export
-#' @describeIn  mice.impute.2l.zinb bootstrap regression variant; fixed interceot in zero model
-mice.impute.2l.zinb.noint.zero.boot<-
+#' @describeIn  mice.impute.2l.hnb bootstrap regression variant; fixed interceot in zero model
+mice.impute.2l.hnb.noint.zero.boot<-
   function (y, ry, x, type, intercept.c = TRUE, intercept.z = FALSE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -999,14 +1002,14 @@ mice.impute.2l.zinb.noint.zero.boot<-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                   dat[, "Y"] > 0),
-                   family=list(family="nbinom2",link="log"))
+                   family=list(family="truncated_nbinom2",link="log"))
     fit.sum=summary(fit)
     newdatamis = data.frame(X = x[wy, , drop = FALSE])
     colnames(newdatamis) = nam
     p <- predict(fit, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = stats::rnbinom(n=length(p), size = fit.sum$sigma, mu = p)
+    imc = aster::rktnb(length(p), size = fit.sum$sigma, k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -1029,10 +1032,9 @@ mice.impute.2l.zinb.noint.zero.boot<-
     
     return(imputed.values)
   }
-
 #' @export
-#' @describeIn  mice.impute.2l.zinb Bayesian regression variant; fixed intercept in zero model
-mice.impute.2l.zinb.noint.zero <-
+#' @describeIn  mice.impute.2l.hnb Bayesian regression variant; fixed intercept in zero model
+mice.impute.2l.hnb.noint.zero <-
   function (y, ry, x, type, intercept.c = TRUE, intercept.z = FALSE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -1137,7 +1139,7 @@ mice.impute.2l.zinb.noint.zero <-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                   dat[, "Y"] > 0),
-                   family=list(family="nbinom2",link="log"))
+                   family=list(family="truncated_nbinom2",link="log"))
     fit.sum=summary(fit)
     
     fit.sum <- summary(fit)
@@ -1152,7 +1154,7 @@ mice.impute.2l.zinb.noint.zero <-
     p <- predict(fitmis, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = stats::rnbinom(n=length(p), size = fit.sum$sigma, mu = p)
+    imc = aster::rktnb(length(p), size = fit.sum$sigma, k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -1175,13 +1177,12 @@ mice.impute.2l.zinb.noint.zero <-
     
     return(imputed.values)
   }
-
 
 
 ### new 2018-04-28
-#' @export 
-#' @describeIn mice.impute.2l.zinb Bayesian regression variant; random intercepts
-mice.impute.2l.zip <-
+#' @export
+#' @describeIn mice.impute.2l.hnb Bayesian regression variant; random intercepts
+mice.impute.2l.hp <-
   function (y, ry, x, type, intercept.c = TRUE, intercept.z = TRUE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -1285,7 +1286,7 @@ mice.impute.2l.zip <-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                            dat[, "Y"] > 0),
-                            family=list(family="poisson",link="log"))
+                            family=list(family="truncated_poisson",link="log"))
     fit.sum=summary(fit)
     
     fit.sum <- summary(fit)
@@ -1300,10 +1301,11 @@ mice.impute.2l.zip <-
     p <- predict(fitmis, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = rpois(n=length(p), lambda = p)
+    imc = aster::rktp(n=length(p), k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
-    imputed.values<-im
+    imputed.values <- im
+    
     if(EV){
       outliers <- getOutliers(imputed.values, rho = c(0.3, 
                                                       0.3), FLim = c(0.15, 0.85))
@@ -1316,14 +1318,16 @@ mice.impute.2l.zip <-
         ry <- !is.na(y)
         new.values <- mice.impute.midastouch(y, ry, x, 
                                              wy = NULL)
-        imputed.values[idx] <- new.values
+        imputed.values[idx] <- new.values  
+        
       }}
+    
     return(imputed.values)
   }
 
 #' @export
-#' @describeIn  mice.impute.2l.zinb bootstrap regression variant; random intercepts
-mice.impute.2l.zip.boot<-
+#' @describeIn  mice.impute.2l.hnb bootstrap regression variant; random intercepts
+mice.impute.2l.hp.boot<-
   function (y, ry, x, type, intercept.c = TRUE, intercept.z = TRUE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -1428,14 +1432,14 @@ mice.impute.2l.zip.boot<-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                            dat[, "Y"] > 0),
-                            family=list(family="poisson",link="log"))
+                            family=list(family="truncated_poisson",link="log"))
     fit.sum=summary(fit)
     newdatamis = data.frame(X = x[wy, , drop = FALSE])
     colnames(newdatamis) = nam
     p <- predict(fit, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = rpois(n=length(p), lambda = p)
+    imc = aster::rktp(n=length(p),  k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -1460,8 +1464,8 @@ mice.impute.2l.zip.boot<-
   }
 
 #' @export
-#' @describeIn  mice.impute.2l.zinb bootstrap regression variant; fixed intercepts
-mice.impute.2l.zip.noint.both.boot<-
+#' @describeIn  mice.impute.2l.hnb bootstrap regression variant; fixed intercepts
+mice.impute.2l.hp.noint.both.boot<-
   function (y, ry, x, type, intercept.c = FALSE, intercept.z = FALSE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -1566,14 +1570,14 @@ mice.impute.2l.zip.noint.both.boot<-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                            dat[, "Y"] > 0),
-                            family=list(family="poisson",link="log"))
+                            family=list(family="truncated_poisson",link="log"))
     fit.sum=summary(fit)
     newdatamis = data.frame(X = x[wy, , drop = FALSE])
     colnames(newdatamis) = nam
     p <- predict(fit, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = rpois(n=length(p), lambda = p)
+    imc = aster::rktp(n=length(p), k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -1598,8 +1602,8 @@ mice.impute.2l.zip.noint.both.boot<-
   }
 
 #' @export
-#' @describeIn  mice.impute.2l.zinb Bayesian regression variant; fixed intercepts
-mice.impute.2l.zip.noint.both <-
+#' @describeIn  mice.impute.2l.hnb Bayesian regression variant; fixed intercepts
+mice.impute.2l.hp.noint.both <-
   function (y, ry, x, type, intercept.c = FALSE, intercept.z = FALSE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -1703,7 +1707,7 @@ mice.impute.2l.zip.noint.both <-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                            dat[, "Y"] > 0),
-                            family=list(family="poisson",link="log"))
+                            family=list(family="truncated_poisson",link="log"))
     fit.sum=summary(fit)
     
     fit.sum <- summary(fit)
@@ -1718,7 +1722,7 @@ mice.impute.2l.zip.noint.both <-
     p <- predict(fitmis, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = rpois(n=length(p), lambda = p)
+    imc = aster::rktp(n=length(p), k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -1743,8 +1747,8 @@ mice.impute.2l.zip.noint.both <-
   }
 
 #' @export
-#' @describeIn  mice.impute.2l.zinb bootstrap regression variant; fixed intercept in count model
-mice.impute.2l.zip.noint.count.boot<-
+#' @describeIn  mice.impute.2l.hnb bootstrap regression variant; fixed intercept in count model
+mice.impute.2l.hp.noint.count.boot<-
   function (y, ry, x, type, intercept.c = FALSE, intercept.z = TRUE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -1849,14 +1853,14 @@ mice.impute.2l.zip.noint.count.boot<-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                            dat[, "Y"] > 0),
-                            family=list(family="poisson",link="log"))
+                            family=list(family="truncated_poisson",link="log"))
     fit.sum=summary(fit)
     newdatamis = data.frame(X = x[wy, , drop = FALSE])
     colnames(newdatamis) = nam
     p <- predict(fit, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = rpois(n=length(p), lambda = p)
+    imc = aster::rktp(n=length(p),  k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -1881,8 +1885,8 @@ mice.impute.2l.zip.noint.count.boot<-
   }
 
 #' @export
-#' @describeIn  mice.impute.2l.zinb Bayesian regression variant; fixed intercept in count model
-mice.impute.2l.zip.noint.count <-
+#' @describeIn  mice.impute.2l.hnb Bayesian regression variant; fixed intercept in count model
+mice.impute.2l.hp.noint.count <-
   function (y, ry, x, type, intercept.c = FALSE, intercept.z = TRUE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -1987,7 +1991,7 @@ mice.impute.2l.zip.noint.count <-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                            dat[, "Y"] > 0),
-                            family=list(family="poisson",link="log"))
+                            family=list(family="truncated_poisson",link="log"))
     fit.sum=summary(fit)
     
     fit.sum <- summary(fit)
@@ -2002,7 +2006,7 @@ mice.impute.2l.zip.noint.count <-
     p <- predict(fitmis, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = rpois(n=length(p), lambda = p)
+    imc = aster::rktp(length(p),  k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -2027,8 +2031,8 @@ mice.impute.2l.zip.noint.count <-
   }
 
 #' @export
-#' @describeIn  mice.impute.2l.zinb bootstrap regression variant; fixed interceot in zero model
-mice.impute.2l.zip.noint.zero.boot<-
+#' @describeIn  mice.impute.2l.hnb bootstrap regression variant; fixed interceot in zero model
+mice.impute.2l.hp.noint.zero.boot<-
   function (y, ry, x, type, intercept.c = TRUE, intercept.z = FALSE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -2134,14 +2138,14 @@ mice.impute.2l.zip.noint.zero.boot<-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                            dat[, "Y"] > 0),
-                            family=list(family="poisson",link="log"))
+                            family=list(family="truncated_poisson",link="log"))
     fit.sum=summary(fit)
     newdatamis = data.frame(X = x[wy, , drop = FALSE])
     colnames(newdatamis) = nam
     p <- predict(fit, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = rpois(n=length(p), lambda = p)
+    imc = aster::rktp(length(p),  k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
@@ -2166,8 +2170,8 @@ mice.impute.2l.zip.noint.zero.boot<-
   }
 
 #' @export
-#' @describeIn  mice.impute.2l.zinb Bayesian regression variant; fixed intercept in zero model
-mice.impute.2l.zip.noint.zero <-
+#' @describeIn  mice.impute.2l.hnb Bayesian regression variant; fixed intercept in zero model
+mice.impute.2l.hp.noint.zero <-
   function (y, ry, x, type, intercept.c = TRUE, intercept.z = FALSE, wy = NULL, EV=TRUE)
   {
     if (is.null(wy)) 
@@ -2272,7 +2276,7 @@ mice.impute.2l.zip.noint.zero <-
     form = as.formula(paste("Y", "~", fixedeff, "+", randeff, sep = ""))
     fit <- glmmTMB::glmmTMB(formula = form,  data = subset(dat,
                                                            dat[, "Y"] > 0),
-                            family=list(family="poisson",link="log"))
+                            family=list(family="truncated_poisson",link="log"))
     fit.sum=summary(fit)
     
     fit.sum <- summary(fit)
@@ -2287,7 +2291,7 @@ mice.impute.2l.zip.noint.zero <-
     p <- predict(fitmis, newdata = newdatamis, type = "response",
                  na.action = na.pass, allow.new.levels = TRUE)
     
-    imc = rpois(n=length(p), lambda = p)
+    imc = aster::rktp(length(p), k = 0, mu = p, xpred = 1)
     
     im[nonzero] <- imc[nonzero]
     imputed.values <- im
