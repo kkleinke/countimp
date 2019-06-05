@@ -1,9 +1,11 @@
-countimp version 2.0.6
-+ mice.impute.hnb
+countimp version 2.0.7
+fixed problem regarding hpc clusters where dependency extremevalues could not be installed
 
+countimp version 2.0.6
+bugfix: bug in mice.impute.hnb
 
 countimp version 2.0.5
-+ mice.impute.nb => problem, when only one predictor was specified (solved)
+bugfix: bug in mice.impute.nb => problem, when only one predictor was specified
 
 countimp version 2.0.4 now includes
 two-level predictive mean matching 

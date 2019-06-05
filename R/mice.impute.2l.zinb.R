@@ -41,7 +41,7 @@
 #' @param EV should automatic outlier handling of imputed values be enabled?  Default is \code{TRUE}: extreme imputations will be identified. These values will be replaced by imputations obtained by predictive mean matching (function \code{mice.impute.midastouch()})
 #' @return Numeric vector of length \code{sum(!ry)} with imputations
 #' @export
-#' @import glmmTMB stats extremevalues
+#' @import glmmTMB stats
 #' @importFrom stats as.formula na.pass predict rbinom rnorm vcov
 #' @aliases mice.impute.2l.zinb mice.impute.2l.zinb.boot mice.impute.2l.zinb.noint.both mice.impute.2l.zinb.noint.both.boot mice.impute.2l.zinb.noint.zero mice.impute.2l.zinb.noint.zero.boot mice.impute.2l.zinb.noint.count mice.impute.2l.zinb.noint.count.boot
 #' @aliases mice.impute.2l.zip mice.impute.2l.zip.boot mice.impute.2l.zip.noint.both mice.impute.2l.zip.noint.both.boot mice.impute.2l.zip.noint.zero mice.impute.2l.zip.noint.zero.boot mice.impute.2l.zip.noint.count mice.impute.2l.zip.noint.count.boot

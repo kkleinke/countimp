@@ -32,7 +32,7 @@
 #' @param EV should automatic outlier handling of imputed values be enabled?  Default is \code{TRUE}: extreme imputations will be identified. These values will be replaced by imputations obtained by predictive mean matching (function \code{mice.impute.midastouch()})
 #' @return Numeric vector of length \code{sum(!ry)} with imputations
 #' @export
-#' @import glmmTMB extremevalues
+#' @import glmmTMB 
 #' @aliases mice.impute.2l.poisson mice.impute.2l.poisson.boot mice.impute.2l.poisson.noint mice.impute.2l.poisson.noint.boot   
 #' @aliases mice.impute.2l.nb mice.impute.2l.nb.boot mice.impute.2l.nb.noint mice.impute.2l.nb.noint.boot   
 #' @aliases mice.impute.2l.nb2 mice.impute.2l.nb2.boot mice.impute.2l.nb2.noint mice.impute.2l.nb2.noint.boot   
@@ -91,7 +91,7 @@ mice.impute.2l.poisson<-
                  na.action = na.pass)
     imputed.values = rpois(length(p), lambda = p)
     if (EV){
-    outliers <- extremevalues::getOutliers(imputed.values, rho = c(0.3, 
+    outliers <- getOutliers(imputed.values, rho = c(0.3, 
                                                     0.3), FLim = c(0.15, 0.85))
     nans <- which(is.nan(imputed.values))
     idx <- c(outliers$iLeft, outliers$iRight, nans)

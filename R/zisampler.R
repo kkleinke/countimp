@@ -1,3 +1,4 @@
+# note: the function was imported from package mice 2.46.0 2017-10-23
 #' @importFrom stats var
 zisampler <-
 function (p, data, where, m, imp, r, visitSequence, fromto, printFlag,

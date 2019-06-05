@@ -1,3 +1,4 @@
+# note: the function was imported from package mice 2.46.0 2017-10-23
 zimice <-
 function (data, m = 5, method = vector("character", length = ncol(data)),
           predictorMatrix = (1 - diag(1, ncol(data))), where = is.na(data),
