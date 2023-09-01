@@ -1,15 +1,26 @@
 countimp: Multiple Imputation of incomplete count data
 ======================================================
 
+Further information
+-------------------
+https://kleinke.io/#software
+
+User's Guide
+-------------------
+
+https://countimp.kkleinke.io
+
 Installation
 ------------
 
-The latest version can be installed from GitHub using function `install_git` from package `devtools`:
+The latest version can be installed from GitHub using function `install_github` from package `remotes`:
 
 ``` r
-devtools::install_git(url = "https://github.com/kkleinke/countimp", 
-                      branch = "master")
+# install.packages('remotes')
+remotes::install_github('kkleinke/countimp')
 ```
+
+
 
 Main functions
 --------------
@@ -42,8 +53,3 @@ http://www.psypress.com/books/details/9780415817622/
 Kleinke, K., & Reinecke, J. (2015b). Multiple imputation of overdispersed multilevel count data. In: Uwe Engel (Ed.), Survey Measurements. Techniques, Data Quality and Sources of Error (pp. 209–226). Frankfurt a. M.: Campus/The University of Chicago Press.
 http://press.uchicago.edu/ucp/books/book/distributed/S/bo22196267.html
 
-Further information
--------------------
-https://kleinke.io/#software
-
-https://countimp.kkleinke.io
