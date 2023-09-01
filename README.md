@@ -8,7 +8,7 @@ https://kleinke.io/#software
 User's Guide
 -------------------
 
-https://countimp.kkleinke.io
+https://countimp.kleinke.io
 
 Installation
 ------------
