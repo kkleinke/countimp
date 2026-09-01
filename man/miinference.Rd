@@ -4,14 +4,39 @@
 \alias{miinference}
 \title{Multiple Imputation Inference}
 \usage{
-miinference(est, std.err, confidence = 0.95)
+miinference(est, std.err = NULL, confidence = 0.95, dfcom = Inf)
 }
 \arguments{
-\item{est}{a list of \code{m} vectors containing parameter estimates (e.g. regression coefficients)}
+\item{est}{one of three things: (a) a list of \code{m} vectors of parameter
+estimates, in which case \code{std.err} must be given as well; (b) a list
+of the \code{m} fitted models, from which estimates, standard errors and
+\code{dfcom} are taken automatically; (c) an object with an
+\code{analyses} component holding those fits, which is what \code{with()}
+returns. Forms (b) and (c) are detected by structure, so they work
+without \pkg{mice} being installed.}
 
-\item{std.err}{a list of \code{m} vectors with corresponding standard errors}
+\item{std.err}{a list of \code{m} vectors with corresponding standard
+errors. Only needed for input form (a); ignored otherwise.}
 
 \item{confidence}{confidence level; default is to compute 95\% confidence intervals}
+
+\item{dfcom}{the residual degrees of freedom of the complete-data analysis.
+This single argument selects the degrees-of-freedom convention, because
+Rubin's (1987) formula is the limiting case of Barnard and Rubin (1999)
+as \code{dfcom} goes to infinity:
+\describe{
+  \item{\code{dfcom = Inf}}{Rubin (1987). The default, so that results
+    from earlier versions of this function reproduce exactly. The formula
+    has no upper bound and can therefore return degrees of freedom above
+    the complete-data degrees of freedom.}
+  \item{\code{dfcom} finite}{Barnard and Rubin (1999), which bounds the
+    degrees of freedom by the complete-data degrees of freedom. This
+    reproduces the \code{df} reported by \code{mice::pool}.}
+}
+When \code{est} is given as fitted models and \code{dfcom} is not
+supplied, it is read off the first fit via \code{df.residual}, so the
+convenient call also gets the bounded degrees of freedom. The convention
+actually used is reported in the \code{df.method} element of the result.}
 }
 \value{
 a list of vectors
@@ -25,16 +50,20 @@ a list of vectors
 \item{upper}{upper limits of the MI confidence intervals}
 \item{r}{relative increases in variance due to nonresponse}	
 \item{fminf}{fractions of missing information} 
+\item{m}{number of imputations that were combined}
+\item{dfcom}{the complete-data degrees of freedom that were used}
+\item{df.method}{\code{"rubin1987"} or \code{"barnard.rubin"}, depending on
+  whether \code{dfcom} was infinite or finite}
 }
 }
 \description{
 Multiple Imputation Inference using Rubin's (1987) rules for MI inference.
 }
 \details{
-Combines \code{m} sets of parmater estimates and standard errors into an overall set of estimate using Rubin's (1987) rules for multiple imputation inference. This function is an adaptation of function \code{mi.inference} from package \pkg{norm}.
+Combines \code{m} sets of parameter estimates and standard errors into an overall set of estimate using Rubin's (1987) rules for multiple imputation inference. This function is an adaptation of function \code{mi.inference} from package \pkg{norm}.
 }
 \examples{
-## simulate overdespersed count data
+## simulate overdispersed count data
 b0 <- 1
 b1 <- .75
 b2 <- -.25
@@ -58,8 +87,12 @@ MNB <- NB
 MNB[sel,1] <- NA	##delete selected data
 
 ## imputation and repeated data analysis
-imp <- mice( MNB, method=c("nb","","","") )
-res <- with( imp, glm.nb(y~x1+x2+x3) )
+imp <- countimp( MNB, method=c("nb","","",""), printFlag = FALSE )
+res <- with( imp, MASS::glm.nb(y~x1+x2+x3) )
+
+## pooling the regression coefficients needs no further arguments: the
+## estimates and standard errors are read from the fits
+miinference( res )
 ## get MI inferences for dispersion parameter theta
 EST <- vector( length = 5, mode = "list" )
 SE <- vector( length = 5, mode = "list" )
@@ -74,6 +107,7 @@ miinference(EST,SE)
 \references{
 \itemize{
 \item Rubin, D. B. (1987). \emph{Multiple imputation for nonresponse in surveys}. New York: Wiley.
+\item Barnard, J., & Rubin, D. B. (1999). Small-sample degrees of freedom with multiple imputation. \emph{Biometrika}, 86(4), 948--955.
 \item Schafer, J. L. (1997). \emph{Analysis of incomplete multivariate data}. London: Chapman & Hall.
 }
 }

@@ -1,10 +1,15 @@
 .Rhistory
 .RData
-.DS_Store
-mice.Rproj
 .Rproj.user
+*.Rproj
+.DS_Store
+.Rapp.history
 *.patch
 *~
 *.orig
 *.rej
-.Rapp.history
+# build artefacts and local check output
+*.tar.gz
+*.Rcheck/
+revdep/
+

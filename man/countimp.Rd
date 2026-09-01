@@ -2,27 +2,198 @@
 % Please edit documentation in R/countimp.R
 \name{countimp}
 \alias{countimp}
-\title{\code{countimp} Wrapper function}
+\title{Multiple imputation of incomplete count data}
 \usage{
-countimp(...)
+countimp(data, ...)
 }
 \arguments{
-\item{...}{\code{mice()} arguments see \code{help("mice")}}
+\item{data}{A data frame or matrix containing the incomplete data. May be
+given positionally, in both the formula and the classic interface.}
+
+\item{...}{Arguments passed on to the imputation engine. In addition to the
+usual arguments (\code{m}, \code{maxit}, \code{seed}, \code{method},
+\code{predictorMatrix}, ...), the following control the formula
+interface:
+\describe{
+  \item{\code{formulas}}{A formula or named list of formulas, one per
+    variable to be imputed, in \pkg{lme4} notation. A term
+    \code{(1 | id)} requests a random intercept for the cluster variable
+    \code{id} and selects the corresponding multilevel method.}
+  \item{\code{family}}{A single family specification or a named list with
+    one entry per formula. See \code{\link{countimp_families}} for the
+    available choices: \code{\link{poisson_count}}, \code{\link{nb}},
+    \code{\link{zi_poisson}}, \code{\link{zi_nb}},
+    \code{\link{hurdle_poisson}} and \code{\link{hurdle_nb}}.}
+  \item{\code{zero}}{The second model part of a two-part family --
+    the inflation part of \code{zi_poisson()}/\code{zi_nb()}, the hurdle
+    of \code{hurdle_poisson()}/\code{hurdle_nb()}. Omitting it reuses the
+    count part's right-hand side. Three notations are accepted:
+    \code{zero = ~ z1} (one-sided, when a single variable is imputed),
+    \code{zero = y ~ z1} (two-sided), or
+    \code{zero = list(y = ~ z1)} (named, and the only one that works for
+    several targets). See the Zero-inflated and hurdle models section.}
+  \item{\code{draw}}{How regression parameters are drawn:
+    \code{"bayes"} (default) draws from the approximate posterior,
+    \code{"boot"} uses a bootstrap of the observed data.}
+}}
+}
+\value{
+An object of class \code{c("countimp_mids", "mids")}, whatever
+  packages are loaded. The inherited \code{mids} class keeps the object
+  usable with \pkg{mice} (see \code{\link[mice]{mice}}) when that package is
+  available, while the \code{countimp_mids} class ensures countimp's own
+  methods never displace mice's methods for mice's objects. Use
+  \code{\link{countimp_diagnostics}} to retrieve what the imputation run
+  recorded and \code{\link{miinference}} for pooling.
 }
 \description{
-Depending on the entries of \code{mice}'s \code{method} argument, this function either calls \code{mice} directly or calls our variant to impute flat file zero-inflated count data.
+Main entry point of the package. Imputation models can be
+  specified in two equivalent ways:
+
+  \describe{
+    \item{Formula interface (recommended, since 2.6.0)}{Pass \code{formulas}
+      and \code{family}. Each model is written in \pkg{lme4} notation, e.g.
+      \code{y ~ x1 + x2 + (1 | id)}, and the family selects the count
+      distribution. Predictor roles and the random-intercept structure are
+      read from the formula; no \code{predictorMatrix} is needed.}
+    \item{Classic interface}{Pass \code{method} and \code{predictorMatrix}
+      with \pkg{mice}'s type codes (1 = fixed effect, 2 = random effect,
+      3 = class variable, -2 = grouping). Retained for backwards
+      compatibility.}
+  }
+
+  The two interfaces are mutually exclusive. Supplying \code{formulas}
+  together with \code{method} or \code{predictorMatrix} is an error.
 }
+\section{Variables that live at a cluster level}{
+
+In multilevel data some variables do not vary within their cluster: class
+size, school type, ward capacity. They occupy one cell per row, but they
+carry one value per \emph{cluster}, and imputing them row by row invents
+variation the design cannot have. countimp refuses that and points at the
+\code{\link{mice.impute.2lonly.pmm}} family, which imputes at the cluster
+level:
+
+\preformatted{
+pred["classsize", ] <- c(1, 1, 0, -2)      # -2 marks the cluster variable
+countimp(d, method = c(y = "2l.poisson", classsize = "2lonly.pmm",
+                       x1 = "", classroom = ""),
+         predictorMatrix = pred, m = 5)
+}
+
+Available: \code{2lonly.pmm}, \code{2lonly.norm}, \code{2lonly.pois} and
+\code{2lonly.nb}. A variable that genuinely varies within its clusters is
+untouched by the check, and a variable observed in fewer than three clusters
+is skipped -- constancy across two clusters is not evidence of a level. The
+check can be switched off with
+\code{options(countimp.check.levels = FALSE)}, which restores the old
+behaviour; measured on 60 classes with 20\% of the classes missing their
+class variable, that behaviour destroyed the constancy in 12 of them.
+
+Predictors of any level are \emph{used} without special treatment: a
+cluster-level covariate is simply a column that happens to be constant
+within its cluster, so \code{y ~ x1 + classsize + schooltype + (1 | school) +
+(1 | classroom)} needs nothing beyond the formula.
+}
+
+\section{Zero-inflated and hurdle models}{
+
+Two-part families model the zeros separately, so they take a second formula.
+\code{zero} describes that part; the count part stays in \code{formulas}:
+
+\preformatted{
+## single level: counts from x1, excess zeros from z1
+countimp(d, formulas = list(y ~ x1),
+         zero     = ~ z1,
+         family   = zi_poisson(), m = 5)
+
+## two levels: each part carries its own random structure
+countimp(d, formulas = list(y ~ x1 + (1 | id)),
+         zero     = ~ z1 + (1 | id),
+         family   = zi_nb(), m = 5)
+
+## several incomplete variables: `zero` must be named
+countimp(d, formulas = list(y1 ~ x1 + (1 | id), y2 ~ x2 + (1 | id)),
+         zero     = list(y1 = ~ z1 + (1 | id), y2 = ~ z2 + (1 | id)),
+         family   = list(y1 = zi_nb(), y2 = hurdle_nb()), m = 5)
+}
+
+\strong{Which family models what.} \code{zi_*} treats a zero as coming from
+either of two sources -- a structural zero or a count that happened to be
+zero -- and both linear predictors are moved by one draw from the joint
+posterior. \code{hurdle_*} treats one gate as deciding zero versus positive,
+and the positive part cannot be zero. Which one is right is a question about
+the data, not a statistic; \code{\link{countimp_fit_diag}} shows how far
+apart the two fit, and says out loud that it cannot settle the choice.
+
+\strong{The random parts are read separately.} The two parts may differ in
+their random \emph{intercepts}, and that is what selects the method variant:
+
+\tabular{ll}{
+  \code{y ~ x1 + (1 | id)}, \code{zero = ~ z1 + (1 | id)}
+    \tab \code{2l.zinb} \cr
+  \code{y ~ x1 + (0 + x1 | id)}, \code{zero = ~ z1 + (1 | id)}
+    \tab \code{2l.zinb.noint.count} \cr
+  \code{y ~ x1 + (1 | id)}, \code{zero = ~ z1 + (0 + z1 | id)}
+    \tab \code{2l.zinb.noint.zero} \cr
+  \code{y ~ x1 + (0 + x1 | id)}, \code{zero = ~ z1 + (0 + z1 | id)}
+    \tab \code{2l.zinb.noint.both}
+}
+
+They may \strong{not} differ in their grouping levels: the model travels on
+as type codes, which mark a variable as grouping (\code{-2}) without saying
+for which part. A \code{zero} formula with fewer \code{(1 | g)} terms than
+the count part is an error rather than a silent completion.
+
+\strong{A zero formula for a one-part family} (\code{poisson_count()},
+\code{nb()}, \code{compois()}, the scale families) is ignored with a
+warning -- there is no second part to put it in.
+}
+
 \examples{
 data(crim4w)
-ini <- countimp(crim4w, maxit=0)
+
+## --- formula interface (since 2.6.0) -----------------------------------
+## one model per incomplete count variable; predictors are read from the
+## right-hand side, so no predictorMatrix is needed
+imp <- countimp(data = crim4w,
+                formulas = list(ACRIM = ACRIM ~ FEMALE + RE + GY + HA),
+                family   = list(ACRIM = nb()),
+                m = 2, maxit = 2, seed = 1)
+
+## a two-part model: counts from one set of predictors, the zeros from
+## another. Omitting `zero` would reuse the count part's right-hand side.
+countimp_spec(data     = crim4w,
+              formulas = list(ACRIM = ACRIM ~ FEMALE + RE + GY),
+              zero     = ~ FEMALE + HA,
+              family   = list(ACRIM = zi_nb()))
+
+## inspect how the specification is translated before imputing
+countimp_spec(data     = crim4w,
+              formulas = list(ACRIM = ACRIM ~ FEMALE + RE),
+              family   = list(ACRIM = hurdle_nb()))
+
+## --- classic interface -------------------------------------------------
+ini <- countimp(crim4w, maxit = 0)
 meth <- ini$method
 meth[6:7] <- "hp"
 meth[8:9] <- "pmm"
 pred <- ini$predictorMatrix
-pred[,"id"] <- 0
-pred["ACRIM",] <- c(0,1,3,2,0,3,3,2,1)
-imp <- countimp( data = crim4w, method = meth, predictorMatrix = pred)
-imp$method
+pred[, "id"] <- 0
+pred["ACRIM", ] <- c(0, 1, 3, 2, 0, 3, 3, 2, 1)
+## "hp" is a hurdle method and needs pscl, which is a suggested package --
+## so the example runs it only where pscl is available. Without the guard
+## R CMD check fails on a machine that installs hard dependencies only.
+if (requireNamespace("pscl", quietly = TRUE)) {
+  imp2 <- countimp(data = crim4w, method = meth, predictorMatrix = pred)
+  imp2$method
+}
+}
+\seealso{
+\code{\link{countimp_spec}} to inspect the translation of a
+  formula specification into the classic representation;
+  \code{\link{countimp_families}} for the available count distributions;
+  \code{\link{countimp_diagnostics}} for post-imputation checks.
 }
 \author{
 Kristian Kleinke

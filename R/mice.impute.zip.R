@@ -38,7 +38,7 @@
 #' \item Kleinke, K., & Reinecke, J. (2013a). Multiple Imputation of incomplete zero-inflated count data. \emph{Statistica Neerlandica}, available from \url{http://onlinelibrary.wiley.com/doi/10.1111/stan.12009/abstract}.
 #' \item Kleinke, K., & Reinecke, J. (2013b). \emph{countimp 1.0 -- A multiple imputation package for incomplete count data} [Technical Report]. University of Bielefeld, Faculty of Sociology, available from \url{www.uni-bielefeld.de/soz/kds/pdf/countimp.pdf}.
 #' \item Rubin, D. B. (1987). \emph{Multiple imputation for nonresponse in surveys}. New York: Wiley.
-#' \item Zeileis, A., Kleiber, C., & Jackman, S. (2008). Regression models for count data in R. \emph{Journal of Statistical Software}, 27(8), 1--25.
+#' \item Zeileis, A., Kleiber, C., & Jackman, S. (2008). Regression models for count data in R. \emph{Journal of Statistical Software}, 27(8), 1-25.
 #'} 
 #' @examples 
 #' ## Example 1:
@@ -50,9 +50,14 @@
 #' pred <- ini$predictorMatrix
 #' pred[,"id"] <- 0
 #' pred["ACRIM",] <- c(0,1,3,2,0,3,3,2,1)
-#' imp <- countimp( data = crim4w, method = meth, predictorMatrix = pred )
+#' ## pscl is a suggested package, and the hurdle methods need it -- so the
+#' ## example runs the imputation only where it is installed.
+#' if (requireNamespace("pscl", quietly = TRUE))
+#'   imp <- countimp( data = crim4w, method = meth, predictorMatrix = pred )
 #'
-#' ## Example 2:
+#' \donttest{
+#' ## Example 2: N = 10000 with m = 5 -- runs about 5 s, which is the CRAN
+#' ## per-example budget, so it is kept out of the timed examples.
 #' ## Simulate zero-inflated NB data
 #' b0 <- 1
 #' b1 <- .3
@@ -60,14 +65,13 @@
 #' c0 <- 0
 #' c1 <- 2
 #' theta <- 1
-#' require("pscl")
 #' set.seed(1234)
 #' N <- 10000
 #' x1 <- rnorm(N)
 #' x2 <- rnorm(N)
 #' x3 <- rnorm(N)
 #' mu <- exp( b0 + b1 * x1 + b2 * x2 )
-#' yzinb <- rnegbin( N, mu, theta)
+#' yzinb <- MASS::rnegbin( N, mu, theta)
 #' pzero <- plogis( c1 * x3 )        # zero-infl. prob. depends on x3
 #' ## Introduce zero-inflation
 #' uni <- runif(N)
@@ -89,342 +93,74 @@
 #' zinbmdata <- generate.md( zinbdata, pmis = .3, strength = c( .2, .8) )
 #'
 #' ## Impute missing data
-#' ini <- mice( zinbmdata, m = 5, maxit = 0)
+#' ini <- countimp( zinbmdata, m = 5, maxit = 0)
 #' pred <- ini$predictorMatrix 
 #' pred[1,] <- c(0, 2, 2, 3)
 #' meth<-ini$method
 #' meth[1] <- "zinb"
 #' imp.zinb <- countimp( zinbmdata, m = 5, method = meth,
-#'             predictorMatrix = pred, seed = 1234, print = FALSE)
-#' @import pscl             
+#'             predictorMatrix = pred, seed = 1234, printFlag = FALSE)
+#' }
 #' @importFrom stats C complete.cases contr.treatment cor formula model.frame model.matrix pt qt
+
+## Consolidated: the eight methods below are thin wrappers around one engine
+## (.countimp_1l_zi() in R/impute1lzi.R), so a fix reaches all of them at once.
+## They differ in exactly three switches -- engine, count distribution, and how
+## the coefficients are drawn -- which are now visible in the call rather than
+## buried in 34 lines of copied body.
+
 #' @export
 #' @describeIn mice.impute.2l.zip zero-inflated Poisson model; Bayesian regression variant
-mice.impute.zip <-
-function(y, ry, x, type, wy = NULL){
-  if (is.null(wy)) 
-    wy <- !ry
-  Y <- y[ry]
-  X <- x[ry,]
-  X <- data.frame(X)
-  nam <- colnames(X)
-  b <- which(type==1) # variables used in zero AND count model
-  c <- which(type==2) # count model ONLY variables
-  z <- which(type==3) # zero model ONLY variables
-  zero <- c(b,z); zero <- unique(zero); zero <- sort(zero)
-  count <- c(b,c); count <- unique(count); count <- sort(count)
-  if (is.integer(zero) && length(zero) == 0L){zeroform="| 1"}else{zeroform=paste("|",paste(nam[zero],collapse="+"))}
-  if (is.integer(count) && length(count) == 0L){countform="Y~ 1"}else{countform=paste("Y","~ ",paste(nam[count],collapse="+"))}
-  form <-
-    as.formula(paste(countform, zeroform))    
-  dat <- data.frame(Y,X)
-  fit <- pscl::zeroinfl(form,data=dat,dist="poisson",link="logit")
-  fit.sum <- summary(fit)
-  beta <- coef(fit)
-  rv <- t(chol(fit.sum$vcov))
-  b.star <- beta+rv %*% rnorm(ncol(rv))
-  fit$coefficients$count <-
-  b.star[1:length(fit$coefficients$count)]
-  fit$coefficients$zero <-
-  b.star[(length(fit$coefficients$count)+1):length(b.star)]
-  newdata <- data.frame(X=x[wy, , drop = FALSE])
-  colnames(newdata) <- nam
-  pc <- predict(fit,
-  newdata=newdata,type="prob",na.action=na.pass)
-  pcvec <- 1:nrow(pc)
-  for (i in 1:nrow(pc))
-  {
-    pcvec[i] <-
-    sample(as.numeric(names(pc[i,])),1,pc[i,] ,
-    replace=TRUE)
-  }
-  return(pcvec)
+mice.impute.zip <- function(y, ry, x, type, wy = NULL) {
+  .countimp_1l_zi(y, ry, x, type, wy,
+                  engine = "zeroinfl", dist = "poisson", draw = "bayes")
 }
 
 #' @export
 #' @describeIn mice.impute.2l.zip zero-inflated Poisson model; Bootstrap regression variant
-mice.impute.zip.boot <-
-  function(y, ry, x, type, wy = NULL){
-    if (is.null(wy)) 
-      wy <- !ry
-    Y <- y[ry]
-    X <- x[ry,]
-    X <- data.frame(X)
-    nam <- colnames(X)
-    b <- which(type==1) # variables used in zero AND count model
-    c <- which(type==2) # count model ONLY variables
-    z <- which(type==3) # zero model ONLY variables
-    zero <- c(b,z); zero <- unique(zero); zero <- sort(zero)
-    count <- c(b,c); count <- unique(count); count <- sort(count)
-    if (is.integer(zero) && length(zero) == 0L){zeroform="| 1"}else{zeroform=paste("|",paste(nam[zero],collapse="+"))}
-    if (is.integer(count) && length(count) == 0L){countform="Y~ 1"}else{countform=paste("Y","~ ",paste(nam[count],collapse="+"))}
-    form <-
-      as.formula(paste(countform, zeroform))    
-    dat <- data.frame(Y,X)
-    datBS <- dat[sample(1:length(Y),length(Y),replace=TRUE),]
-    fit <- pscl::zeroinfl(form,
-                    data=datBS,dist="poisson",link="logit")
-    newdata <- data.frame(X=x[wy, , drop = FALSE])
-    colnames(newdata) <- nam
-    pc <- predict(fit,
-                  newdata=newdata,type="prob",na.action=na.pass)
-    pcvec <- 1:nrow(pc)
-    for (i in 1:nrow(pc))
-    {
-      pcvec[i] <-
-        sample(as.numeric(names(pc[i,])),1, pc[i,],
-               replace=TRUE)
-    }
-    return(pcvec)
-    }
+mice.impute.zip.boot <- function(y, ry, x, type, wy = NULL) {
+  .countimp_1l_zi(y, ry, x, type, wy,
+                  engine = "zeroinfl", dist = "poisson", draw = "boot")
+}
 
 #' @export
-#' @describeIn mice.impute.2l.zip zero-inflated NB model; Bayesian regression variant
-
-
-
-
-mice.impute.zinb <-
-  function(y, ry, x, type, wy = NULL){
-    if (is.null(wy)) 
-      wy <- !ry
-    Y <- y[ry]
-    X <- x[ry,]
-    X <- data.frame(X)
-    nam <- colnames(X)
-    b <- which(type==1) # variables used in zero AND count model
-    c <- which(type==2) # count model ONLY variables
-    z <- which(type==3) # zero model ONLY variables
-    zero <- c(b,z); zero <- unique(zero); zero <- sort(zero)
-    count <- c(b,c); count <- unique(count); count <- sort(count)
-    if (is.integer(zero) && length(zero) == 0L){zeroform="| 1"}else{zeroform=paste("|",paste(nam[zero],collapse="+"))}
-    if (is.integer(count) && length(count) == 0L){countform="Y~ 1"}else{countform=paste("Y","~ ",paste(nam[count],collapse="+"))}
-    form <-
-      as.formula(paste(countform, zeroform))
-    dat <- data.frame(Y,X)
-    fit <- pscl::zeroinfl(form,data=dat,dist="negbin",link="logit")
-    fit.sum <- summary(fit)
-    beta <- coef(fit)
-    rv <- t(chol(fit.sum$vcov))
-    b.star <- beta+rv %*% rnorm(ncol(rv))
-    fit$coefficients$count <-
-      b.star[1:length(fit$coefficients$count)]
-    fit$coefficients$zero <-
-      b.star[(length(fit$coefficients$count)+1):length(b.star)]
-    newdata <- data.frame(X=x[wy, , drop = FALSE])
-    colnames(newdata) <- nam
-    pc <- predict(fit,
-                  newdata=newdata,type="prob",na.action=na.pass)
-    pcvec <- 1:nrow(pc)
-    for (i in 1:nrow(pc))
-    {
-      pcvec[i] <-
-        sample(as.numeric(names(pc[i,])),1,pc[i,] ,
-               replace=TRUE)
-    }
-    return(pcvec)
-    }
+#' @describeIn mice.impute.2l.zip zero-inflated negative binomial model; Bayesian regression variant
+mice.impute.zinb <- function(y, ry, x, type, wy = NULL) {
+  .countimp_1l_zi(y, ry, x, type, wy,
+                  engine = "zeroinfl", dist = "negbin", draw = "bayes")
+}
 
 #' @export
-#' @describeIn mice.impute.2l.zip zero-inflated NB model; Bootstrap regression variant
-mice.impute.zinb.boot <-
-  function(y, ry, x, type, wy = NULL){
-    if (is.null(wy)) 
-      wy <- !ry
-    Y <- y[ry]
-    X <- x[ry,]
-    X <- data.frame(X)
-    nam <- colnames(X)
-    b <- which(type==1) # variables used in zero AND count model
-    c <- which(type==2) # count model ONLY variables
-    z <- which(type==3) # zero model ONLY variables
-    zero <- c(b,z); zero <- unique(zero); zero <- sort(zero)
-    count <- c(b,c); count <- unique(count); count <- sort(count)
-    if (is.integer(zero) && length(zero) == 0L){zeroform="| 1"}else{zeroform=paste("|",paste(nam[zero],collapse="+"))}
-    if (is.integer(count) && length(count) == 0L){countform="Y~ 1"}else{countform=paste("Y","~ ",paste(nam[count],collapse="+"))}
-    form <-
-      as.formula(paste(countform, zeroform))    
-    dat <- data.frame(Y,X)
-    datBS <- dat[sample(1:length(Y),length(Y),replace=TRUE),]
-    fit <- pscl::zeroinfl(form,
-                    data=datBS,dist="negbin",link="logit")
-    newdata <- data.frame(X=x[wy, , drop = FALSE])
-    colnames(newdata) <- nam
-    pc <- predict(fit,
-                  newdata=newdata,type="prob",na.action=na.pass)
-    pcvec <- 1:nrow(pc)
-    for (i in 1:nrow(pc))
-    {
-      pcvec[i] <-
-        sample(as.numeric(names(pc[i,])),1, pc[i,],
-               replace=TRUE)
-    }
-    return(pcvec)
-    }
+#' @describeIn mice.impute.2l.zip zero-inflated negative binomial model; Bootstrap regression variant
+mice.impute.zinb.boot <- function(y, ry, x, type, wy = NULL) {
+  .countimp_1l_zi(y, ry, x, type, wy,
+                  engine = "zeroinfl", dist = "negbin", draw = "boot")
+}
 
 #' @export
 #' @describeIn mice.impute.2l.zip hurdle Poisson model; Bayesian regression variant
-mice.impute.hp <-
-  function (y, ry, x, type, wy = NULL)
-  {
-    if (is.null(wy)) 
-      wy <- !ry
-    Y <- y[ry]
-    X <- x[ry, ]
-    X <- data.frame(X)
-    nam <- colnames(X)
-    b <- which(type == 1)
-    c <- which(type == 2)
-    z <- which(type == 3)
-    zero <- c(b, z)
-    zero <- unique(zero)
-    zero <- sort(zero)
-    count <- c(b, c)
-    count <- unique(count)
-    count <- sort(count)
-    if (is.integer(zero) && length(zero) == 0L){zeroform="| 1"}else{zeroform=paste("|",paste(nam[zero],collapse="+"))}
-    if (is.integer(count) && length(count) == 0L){countform="Y~ 1"}else{countform=paste("Y","~ ",paste(nam[count],collapse="+"))}
-    form <-
-      as.formula(paste(countform, zeroform))    
-    dat <- data.frame(Y, X)
-    fit <- pscl::hurdle(form, data = dat, dist = "poisson")
-    fit.sum <- summary(fit)
-    beta <- coef(fit)
-    rv <- t(chol(fit.sum$vcov))
-    b.star <- beta + rv %*% rnorm(ncol(rv))
-    fit$coefficients$count <- b.star[1:length(fit$coefficients$count)]
-    fit$coefficients$zero <- b.star[(length(fit$coefficients$count) +
-                                       1):length(b.star)]
-    newdata <- data.frame(X = x[wy, , drop = FALSE])
-    colnames(newdata) <- nam
-    pc <- predict(fit, newdata = newdata, type = "prob", na.action = na.pass)
-    pcvec <- 1:nrow(pc)
-    for (i in 1:nrow(pc)) {
-      pcvec[i] <- sample(as.numeric(names(pc[i, ])), 1, pc[i,
-                                                           ], replace = TRUE)
-    }
-    return(pcvec)
-  }
+mice.impute.hp <- function(y, ry, x, type, wy = NULL) {
+  .countimp_1l_zi(y, ry, x, type, wy,
+                  engine = "hurdle", dist = "poisson", draw = "bayes")
+}
 
 #' @export
 #' @describeIn mice.impute.2l.zip hurdle Poisson model; Bootstrap regression variant
-mice.impute.hp.boot <-
-  function (y, ry, x, type, wy = NULL)
-  {
-    if (is.null(wy)) 
-      wy <- !ry
-    Y <- y[ry]
-    X <- x[ry, ]
-    X <- data.frame(X)
-    nam <- colnames(X)
-    b <- which(type == 1)
-    c <- which(type == 2)
-    z <- which(type == 3)
-    zero <- c(b, z)
-    zero <- unique(zero)
-    zero <- sort(zero)
-    count <- c(b, c)
-    count <- unique(count)
-    count <- sort(count)
-    if (is.integer(zero) && length(zero) == 0L){zeroform="| 1"}else{zeroform=paste("|",paste(nam[zero],collapse="+"))}
-    if (is.integer(count) && length(count) == 0L){countform="Y~ 1"}else{countform=paste("Y","~ ",paste(nam[count],collapse="+"))}
-    form <-
-      as.formula(paste(countform, zeroform))    
-    dat <- data.frame(Y, X)
-    datBS <- dat[sample(1:length(Y), length(Y), replace = TRUE),
-                 ]
-    fit <- pscl::hurdle(form, data = datBS, dist = "poisson")
-    newdata <- data.frame(X = x[wy, , drop = FALSE])
-    colnames(newdata) <- nam
-    pc <- predict(fit, newdata = newdata, type = "prob", na.action = na.pass)
-    pcvec <- 1:nrow(pc)
-    for (i in 1:nrow(pc)) {
-      pcvec[i] <- sample(as.numeric(names(pc[i, ])), 1, pc[i,
-                                                           ], replace = TRUE)
-    }
-    return(pcvec)
-  }
+mice.impute.hp.boot <- function(y, ry, x, type, wy = NULL) {
+  .countimp_1l_zi(y, ry, x, type, wy,
+                  engine = "hurdle", dist = "poisson", draw = "boot")
+}
 
 #' @export
-#' @describeIn mice.impute.2l.zip hurdle NB model; Bayesian regression variant
-mice.impute.hnb <-
-  function (y, ry, x, type, wy = NULL)
-  {
-    if (is.null(wy)) 
-      wy <- !ry
-    Y <- y[ry]
-    X <- x[ry, ]
-    X <- data.frame(X)
-    nam <- colnames(X)
-    b <- which(type == 1)
-    c <- which(type == 2)
-    z <- which(type == 3)
-    zero <- c(b, z)
-    zero <- unique(zero)
-    zero <- sort(zero)
-    count <- c(b, c)
-    count <- unique(count)
-    count <- sort(count)
-    if (is.integer(zero) && length(zero) == 0L){zeroform="| 1"}else{zeroform=paste("|",paste(nam[zero],collapse="+"))}
-    if (is.integer(count) && length(count) == 0L){countform="Y~ 1"}else{countform=paste("Y","~ ",paste(nam[count],collapse="+"))}
-    form <-
-      as.formula(paste(countform, zeroform))    
-    dat <- data.frame(Y, X)
-    fit <- pscl::hurdle(form, data = dat, dist = "negbin")
-    fit.sum <- summary(fit)
-    beta <- coef(fit)
-    rv <- t(chol(fit.sum$vcov))
-    b.star <- beta + rv %*% rnorm(ncol(rv))
-    fit$coefficients$count <- b.star[1:length(fit$coefficients$count)]
-    fit$coefficients$zero <- b.star[(length(fit$coefficients$count) +
-                                       1):length(b.star)]
-    newdata <- data.frame(X = x[wy, , drop = FALSE])
-    colnames(newdata) <- nam
-    pc <- predict(fit, newdata = newdata, type = "prob", na.action = na.pass)
-    pcvec <- 1:nrow(pc)
-    for (i in 1:nrow(pc)) {
-      pcvec[i] <- sample(as.numeric(names(pc[i, ])), 1, pc[i,
-                                                           ], replace = TRUE)
-    }
-    return(pcvec)
-  }
+#' @describeIn mice.impute.2l.zip hurdle negative binomial model; Bayesian regression variant
+mice.impute.hnb <- function(y, ry, x, type, wy = NULL) {
+  .countimp_1l_zi(y, ry, x, type, wy,
+                  engine = "hurdle", dist = "negbin", draw = "bayes")
+}
 
 #' @export
-#' @describeIn mice.impute.2l.zip hurdle NB model; Bootstrap regression variant
-mice.impute.hnb.boot <-
-  function (y, ry, x, type, wy=NULL)
-  {
-    if (is.null(wy)) 
-      wy <- !ry
-    Y <- y[ry]
-    X <- x[ry, ]
-    X <- data.frame(X)
-    nam <- colnames(X)
-    b <- which(type == 1)
-    c <- which(type == 2)
-    z <- which(type == 3)
-    zero <- c(b, z)
-    zero <- unique(zero)
-    zero <- sort(zero)
-    count <- c(b, c)
-    count <- unique(count)
-    count <- sort(count)
-    if (is.integer(zero) && length(zero) == 0L){zeroform="| 1"}else{zeroform=paste("|",paste(nam[zero],collapse="+"))}
-    if (is.integer(count) && length(count) == 0L){countform="Y~ 1"}else{countform=paste("Y","~ ",paste(nam[count],collapse="+"))}
-    form <-
-      as.formula(paste(countform, zeroform))    
-    dat <- data.frame(Y, X)
-    datBS <- dat[sample(1:length(Y), length(Y), replace = TRUE),
-                 ]
-    fit <- pscl::hurdle(form, data = datBS, dist = "negbin")
-    
-    newdata <- data.frame(X = x[wy, , drop = FALSE])
-    colnames(newdata) <- nam
-    pc <- predict(fit, newdata = newdata, type = "prob", na.action = na.pass)
-    pcvec <- 1:nrow(pc)
-    for (i in 1:nrow(pc)) {
-      pcvec[i] <- sample(as.numeric(names(pc[i, ])), 1, pc[i,
-                                                           ], replace = TRUE)
-    }
-    return(pcvec)
-  }
+#' @describeIn mice.impute.2l.zip hurdle negative binomial model; Bootstrap regression variant
+mice.impute.hnb.boot <- function(y, ry, x, type, wy = NULL) {
+  .countimp_1l_zi(y, ry, x, type, wy,
+                  engine = "hurdle", dist = "negbin", draw = "boot")
+}

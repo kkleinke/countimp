@@ -4,8 +4,16 @@
 \alias{mice.impute.2l.pmm}
 \title{Two-level predictive mean matching}
 \usage{
-mice.impute.2l.pmm(y, ry, x, type, intercept = TRUE, donors = 5,
-  wy = NULL, ...)
+mice.impute.2l.pmm(
+  y,
+  ry,
+  x,
+  type,
+  intercept = TRUE,
+  donors = 5,
+  wy = NULL,
+  ...
+)
 }
 \arguments{
 \item{y}{Numeric vector with incomplete data}

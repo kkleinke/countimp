@@ -1,0 +1,155 @@
+## mice.impute.cp.R -- the exported right-censored methods.
+##
+## Neither example is in \donttest. Measured: 0.36 s for the first and 0.04 s
+## for the second, against the 5 s that R CMD check allows -- and the second is
+## the one worth running, because it is where the scale switches from recorded
+## to latent. A `##` comment must not sit inside the roxygen block below; it
+## ends the block, and everything above it would be dropped from the Rd file.
+
+#' Imputation of right-censored (top-coded) counts
+#'
+#' Imputes a count variable whose large values were recorded only as "at least
+#' so many": survey items capped at \dQuote{10 or more}, a diary closed after 30
+#' events, a register that stops counting above its last category. Both the fit
+#' and the draw take the censoring into account -- \code{cp} under a Poisson
+#' model, \code{cnb} under a negative binomial one, each with a Bayesian variant
+#' and a bootstrap variant (suffix \code{.boot}).
+#'
+#' @details
+#' \strong{Censoring is not a bound.} \code{\link{mice.impute.bp}} models a
+#' count that \emph{cannot} exceed its ceiling -- a five-day week has no sixth
+#' day -- and renormalises the distribution over the admissible range. Censoring
+#' says the count could exceed the limit but was not recorded above it, so the
+#' distribution keeps its whole support and a censored case contributes the tail
+#' probability \eqn{P(Y \ge c)} to the likelihood. Using \code{"bp"} on censored
+#' data understates the mean; using \code{"cp"} on genuinely bounded data
+#' invents values the scale does not contain.
+#'
+#' \strong{The censoring enters the likelihood.} Treating the recorded ceiling
+#' values as if they were the counts pulls the fitted mean down and flattens the
+#' slope, and the imputations inherit that bias. Fitting the censored
+#' likelihood removes it; where nothing reaches the limit the two fits coincide,
+#' so the censored fit costs nothing in that case.
+#'
+#' \strong{Three kinds of cell.} A missing cell is drawn from the fitted
+#' distribution. A \emph{censored observation} that is marked for imputation
+#' through \code{where} is drawn from that distribution conditioned on
+#' \eqn{Y \ge c}: the value is known to be at least the limit, and the method
+#' keeps that information rather than discarding it. An observed, uncensored
+#' cell marked in \code{where} gets an ordinary synthetic draw.
+#'
+#' \strong{Which scale the imputations are on} follows from that, and is decided
+#' automatically because a completed column can only be on one scale:
+#' \itemize{
+#'   \item No censored cell in \code{where}: the completed data stay top-coded,
+#'     so imputations for missing cells are capped at their limit.
+#'   \item Censored cells in \code{where}: the completed data are on the latent
+#'     scale, so missing cells are drawn uncapped.
+#' }
+#' \code{latent} overrides this. The automatic choice is recorded in
+#' \code{\link{countimp_diagnostics}}, never taken silently.
+#'
+#' Within the FCS cycle the sampler writes only genuinely missing cells back
+#' into its working data, so the censoring information is intact in every
+#' iteration -- which is what the fit needs. Other variables that use this one as
+#' a predictor therefore see the recorded (censored) value, not a resolved one.
+#'
+#' Observed values \emph{above} their limit are an error, not a warning: a
+#' censored observation is recorded at the limit, never above it.
+#'
+#' @param y Incomplete numeric count vector.
+#' @param ry Logical vector: \code{TRUE} where \code{y} is observed.
+#' @param x Numeric matrix or data frame of predictors, complete.
+#' @param wy Logical vector: positions to impute. Defaults to \code{!ry}.
+#' @param censor The censoring limit. Either a single number -- one ceiling for
+#'   every case, the top-coding case -- or one limit per case, in which case
+#'   \code{Inf} marks a case that is not censored. A case counts as censored
+#'   when \code{y >= censor}. When passed through \code{\link{countimp}} this
+#'   may also be a named list with one entry per censored variable, e.g.
+#'   \code{censor = list(visits = 10, kids = 5)}.
+#' @param latent Logical, or \code{NULL} (default) to decide as described under
+#'   Details. \code{TRUE} draws missing cells from the latent distribution
+#'   (imputations may exceed the limit), \code{FALSE} caps them at their limit.
+#'
+#'   The setting belongs together with \code{where}, because the scale a
+#'   completed column carries is decided there: only cells listed in
+#'   \code{where} are replaced. \code{latent = TRUE} without a censored cell in
+#'   \code{where} therefore draws the missing cells uncapped while the censored
+#'   observations stay at their limit -- one column with two scales, and every
+#'   summary of it mixes them. That combination is allowed, because it can be
+#'   meant, but it warns once per session and is recorded in
+#'   \code{\link{countimp_diagnostics}}. To resolve the censoring, add the
+#'   censored cells to \code{where}; to keep it, use \code{latent = FALSE}.
+#' @param EV Logical. If \code{TRUE}, imputations flagged as extreme are
+#'   redrawn. Values that leave the censoring scale during that step are
+#'   redrawn or re-capped, not left as the screening produced them.
+#' @param ... Ignored, present for compatibility with the method contract.
+#'
+#' @return A numeric vector of length \code{sum(wy)} with the imputed counts.
+#'
+#' @seealso \code{\link{mice.impute.bp}} for a count that genuinely cannot
+#'   exceed its ceiling, \code{\link{mice.impute.ztp}} for a count that cannot
+#'   be zero, \code{\link{countimp_fit_diag}} for choosing a count family.
+#'
+#' @references
+#' Raghunathan, T. E., Lepkowski, J. M., Van Hoewyk, J., & Solenberger, P.
+#' (2001). A multivariate technique for multiply imputing missing values using a
+#' sequence of regression models. \emph{Survey Methodology}, 27(1), 85-95.
+#'
+#' Kleinke, K., & Reinecke, J. (2013). Multiple imputation of incomplete
+#' zero-inflated count data. \emph{Statistica Neerlandica}, 67(3), 311-336.
+#'
+#' @examples
+#' set.seed(1)
+#' n  <- 300
+#' x1 <- rnorm(n)
+#' y  <- rpois(n, exp(1.4 + 0.5 * x1))
+#' y  <- pmin(y, 8)                       # recorded as "8 or more"
+#' y[sample(n, 60)] <- NA
+#' d  <- data.frame(y = y, x1 = x1)
+#'
+#' ## missing cells only: imputations stay on the recorded scale
+#' imp <- countimp(d, method = c(y = "cp", x1 = ""), m = 2,
+#'                 censor = 8, printFlag = FALSE)
+#' max(unlist(imp$imp$y))
+#'
+#' ## resolving the censored observations as well: `where` marks them, and the
+#' ## imputations then live on the latent scale
+#' w <- is.na(d$y) | (!is.na(d$y) & d$y >= 8)
+#' wm <- matrix(FALSE, nrow(d), ncol(d), dimnames = dimnames(d))
+#' wm[, "y"] <- w
+#' imp2 <- countimp(d, method = c(y = "cp", x1 = ""), m = 2, where = wm,
+#'                  censor = 8, printFlag = FALSE)
+#' max(unlist(imp2$imp$y))
+#'
+#' @rdname mice.impute.cp
+#' @export
+mice.impute.cp <- function(y, ry, x, wy = NULL, censor = NULL, latent = NULL,
+                           EV = FALSE, ...) {
+  .countimp_1l_censored(y, ry, x, wy = wy, dist = "poisson", bayes = TRUE,
+                        censor = censor, latent = latent, EV = EV, ...)
+}
+
+#' @rdname mice.impute.cp
+#' @export
+mice.impute.cp.boot <- function(y, ry, x, wy = NULL, censor = NULL,
+                                latent = NULL, EV = FALSE, ...) {
+  .countimp_1l_censored(y, ry, x, wy = wy, dist = "poisson", bayes = FALSE,
+                        censor = censor, latent = latent, EV = EV, ...)
+}
+
+#' @rdname mice.impute.cp
+#' @export
+mice.impute.cnb <- function(y, ry, x, wy = NULL, censor = NULL, latent = NULL,
+                            EV = FALSE, ...) {
+  .countimp_1l_censored(y, ry, x, wy = wy, dist = "negbin", bayes = TRUE,
+                        censor = censor, latent = latent, EV = EV, ...)
+}
+
+#' @rdname mice.impute.cp
+#' @export
+mice.impute.cnb.boot <- function(y, ry, x, wy = NULL, censor = NULL,
+                                 latent = NULL, EV = FALSE, ...) {
+  .countimp_1l_censored(y, ry, x, wy = wy, dist = "negbin", bayes = FALSE,
+                        censor = censor, latent = latent, EV = EV, ...)
+}

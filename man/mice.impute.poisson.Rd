@@ -3,107 +3,115 @@
 \name{mice.impute.poisson}
 \alias{mice.impute.poisson}
 \alias{mice.impute.poisson.boot}
-\alias{mice.impute.pois.boot}
+\alias{mice.impute.quasipoisson}
+\alias{mice.impute.quasipoisson.boot}
+\alias{mice.impute.nb}
+\alias{mice.impute.nb.boot}
 \alias{mice.impute.pois}
-\alias{mice.impute.poisson.boot}
-\alias{mice.impute.pois}
 \alias{mice.impute.pois.boot}
-\title{Multiple Imputation of Poisson Distributed Count Data}
+\alias{mice.impute.qpois}
+\alias{mice.impute.qpois.boot}
+\title{Single-level count imputation}
 \usage{
-mice.impute.poisson(y, ry, x, wy = NULL, EV = TRUE, ...)
+mice.impute.poisson(y, ry, x, wy = NULL, EV = FALSE, ...)
 
-mice.impute.poisson.boot(y, ry, x, wy = NULL, EV = TRUE, ...)
+mice.impute.poisson.boot(y, ry, x, wy = NULL, EV = FALSE, ...)
 
-mice.impute.pois(y, ry, x, wy = NULL, EV = TRUE, ...)
+mice.impute.quasipoisson(y, ry, x, wy = NULL, EV = FALSE, ...)
 
-mice.impute.pois.boot(y, ry, x, wy = NULL, EV = TRUE, ...)
+mice.impute.quasipoisson.boot(y, ry, x, wy = NULL, EV = FALSE, ...)
+
+mice.impute.nb(y, ry, x, wy = NULL, EV = FALSE, ...)
+
+mice.impute.nb.boot(y, ry, x, wy = NULL, EV = FALSE, ...)
+
+mice.impute.pois(y, ry, x, wy = NULL, EV = FALSE, ...)
+
+mice.impute.pois.boot(y, ry, x, wy = NULL, EV = FALSE, ...)
+
+mice.impute.qpois(y, ry, x, wy = NULL, EV = FALSE, ...)
+
+mice.impute.qpois.boot(y, ry, x, wy = NULL, EV = FALSE, ...)
 }
 \arguments{
-\item{y}{Numeric vector with incomplete data}
+\item{y}{Incomplete numeric count vector.}
 
-\item{ry}{Response pattern of \code{y} (\code{TRUE}=observed, \code{FALSE}=missing)}
+\item{ry}{Logical vector: \code{TRUE} where \code{y} is observed.}
 
-\item{x}{matrix with \code{length(y)} rows containing complete covariates}
+\item{x}{Numeric matrix or data frame of predictors, complete.}
 
-\item{wy}{Logical vector of length \code{length(y)}. A \code{TRUE} value indicates locations in \code{y} for which imputations are created. Default is \code{!ry}}
+\item{wy}{Logical vector: positions to impute. Defaults to \code{!ry}.}
 
-\item{EV}{should automatic outlier handling of imputed values be enabled?  Default is \code{TRUE}: extreme imputations will be identified. These values will be replaced by imputations obtained by predictive mean matching (function \code{mice.impute.midastouch()})}
+\item{EV}{Logical. If \code{TRUE}, imputations flagged as extreme are
+redrawn by predictive mean matching. Requires package \pkg{mice}.}
 
-\item{...}{Other named arguments.}
+\item{...}{Ignored, present for compatibility with the method contract.}
 }
 \value{
-Numeric vector of length \code{sum(!ry)} with imputations
+A numeric vector of length \code{sum(wy)} with the imputed counts.
 }
 \description{
-Imputes univariate missing data based  on a \code{poisson} GLM following either the Bayesian regression or bootstrap regression (appendix \code{.boot}) MI approach.
+Imputes a count variable with missing values under a Poisson, quasi-Poisson
+or negative binomial model. Each distribution comes in two variants: a
+Bayesian one, which draws the regression coefficients from their sampling
+distribution before drawing the counts, and a bootstrap one, which
+bootstraps the observed cases and uses the resulting estimate. Both are
+proper imputation in the sense of Rubin; the Bayesian variant is the
+default choice, the bootstrap variant is useful when the coefficient
+covariance is unstable.
 }
 \details{
-A Poisson GLM assumes that the mean of the count variable is equal to its variance (equidispersion assumption). For details, see Zeileis, Kleiber, & Jackman (2008), or Hilbe (2007).
-The Bayesian method consists of the following steps:
-\enumerate{
-\item Fit the model, and find bhat, the posterior mean, and V(bhat), the posterior variance of model parameters b.
-\item Draw b.star from N(bhat,V(bhat)).
-\item Compute fitted values using \code{exp(x[!ry, ] \%*\% b.star)}
-\item Simulate imputations from a Poisson distribution with mean parameter \code{lamda} being the respective fitted value from step 3.
-}
-The function uses the standard \code{glm.fit} function, using the \code{poisson} family. 
-The bootstrap method draws a bootstrap sample from \code{y[ry]} and \code{x[ry,]} and consists of the following steps:
-\enumerate{
-\item Fit the model to the bootstrap sample and get model parameters \code{b.star}
-\item Compute fitted values using \code{exp(x[!ry, ] \%*\% b.star)}
-\item Simulate imputations from a Poisson distribution.
-}
+For the quasi-Poisson variants the estimated dispersion \eqn{\phi} enters
+twice: it scales the covariance of the drawn coefficients, and it governs
+the spread of the drawn counts. Earlier versions of this package scaled
+only the counts and drew the coefficients from the unscaled covariance,
+which understated parameter uncertainty by a factor \eqn{\sqrt{\phi}}.
+
+The practical effect is damped, because the error shrinks only the
+between-imputation component \eqn{B} of Rubin's total variance
+\eqn{T = \bar{U} + (1 + 1/m) B}. At a moderate missing-data rate
+\eqn{\bar{U}} dominates and interval coverage stays close to nominal even
+with the old code; the correction widens intervals by roughly four per cent
+at 30 per cent missing values. The error matters where \eqn{B} carries more
+of \eqn{T}, that is at high missing-data rates and with strongly
+overdispersed data.
+
+\code{pois}, \code{pois.boot}, \code{qpois} and \code{qpois.boot} are
+aliases for the correspondingly named \code{poisson} and
+\code{quasipoisson} methods and behave identically.
 }
 \section{Functions}{
 \itemize{
-\item \code{mice.impute.poisson}: Bayesian regression variant
+\item \code{mice.impute.poisson()}: Bayesian Poisson variant
 
-\item \code{mice.impute.poisson.boot}: Bootstrap variant
+\item \code{mice.impute.poisson.boot()}: Bootstrap Poisson variant
 
-\item \code{mice.impute.pois}: Identical to \code{mice.impute.poisson}; included for backward compatibility
+\item \code{mice.impute.quasipoisson()}: Bayesian quasi-Poisson variant
 
-\item \code{mice.impute.pois.boot}: Identical to \code{mice.impute.poisson.boot}; included for backward compatibility
+\item \code{mice.impute.quasipoisson.boot()}: Bootstrap quasi-Poisson variant
+
+\item \code{mice.impute.nb()}: Bayesian negative binomial variant
+
+\item \code{mice.impute.nb.boot()}: Bootstrap negative binomial variant
+
+\item \code{mice.impute.pois()}: Alias for \code{mice.impute.poisson}
+
+\item \code{mice.impute.pois.boot()}: Alias for \code{mice.impute.poisson.boot}
+
+\item \code{mice.impute.qpois()}: Alias for \code{mice.impute.quasipoisson}
+
+\item \code{mice.impute.qpois.boot()}: Alias for \code{mice.impute.quasipoisson.boot}
+
 }}
-
 \examples{
-## simulate Poisson distributed data
-set.seed( 1234 )
-b0 <- 1
-b1 <- .75
-b2 <- -.25
-b3 <- .5
-N <- 5000
-x1 <- rnorm(N)
-x2 <- rnorm(N)
-x3 <- rnorm(N)
-lam <- exp( b0 + b1 * x1 + b2 * x2 + b3 * x3 )
-y <- rpois( N, lam )
-POIS <- data.frame( y, x1, x2, x3 )
+set.seed(1)
+n <- 200
+x <- rnorm(n)
+y <- rpois(n, exp(1 + 0.5 * x))
+d <- data.frame(y = y, x = x)
+d$y[sample.int(n, 40)] <- NA
+imp <- countimp(d, method = c("poisson", ""), m = 5, printFlag = FALSE)
 
-## introduce MAR missingness to simulated data
-generate.md <- function( data, pos = 1, Z = 2, pmis = .5, strength = c( .5, .5 ) ) 
-{
- total <- round( pmis * nrow(data) )
- sm <- which( data[,Z] < mean( data[,Z] ) )
- gr <- which( data[,Z] > mean( data[,Z] ) )
- sel.sm <- sample( sm, round( strength[1] * total ) )
- sel.gr <- sample( gr, round( strength[2] * total ) )
- sel <- c( sel.sm, sel.gr )
- data[sel,pos] <- NA
- return(data)
-}
-MPOIS <- generate.md( POIS, pmis = .2, strength = c( .2, .8) )
-
-## impute missing data
-imp <- countimp( MPOIS, method = c( "poisson" ,"" ,"" ,"" ))
-}
-\references{
-\itemize{
-\item Hilbe, J. M. (2007). \emph{Negative binomial regression}. Cambridge: Cambridge University Press.
-\item Kleinke, K., & Reinecke, J. (2013). \emph{countimp 1.0 -- A multiple imputation package for incomplete count data} [Technical Report]. University of Bielefeld, Faculty of Sociology, available from \url{www.uni-bielefeld.de/soz/kds/pdf/countimp.pdf}.
-\item Rubin, D. B. (1987). \emph{Multiple imputation for nonresponse in surveys}. New York: Wiley.
-\item Zeileis, A., Kleiber, C., & Jackman, S. (2008). Regression models for count data in R. \emph{Journal of Statistical Software}, 27(8), 1–-25.
-}
 }
 \author{
 Kristian Kleinke

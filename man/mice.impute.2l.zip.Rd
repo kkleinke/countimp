@@ -6,13 +6,9 @@
 \alias{mice.impute.hnb.boot}
 \alias{mice.impute.hp}
 \alias{mice.impute.hp.boot}
-\alias{mice.impute.zip.boot}
 \alias{mice.impute.zinb}
 \alias{mice.impute.zinb.boot}
-\alias{mice.impute.hp}
-\alias{mice.impute.hp.boot}
-\alias{mice.impute.hnb}
-\alias{mice.impute.hnb.boot}
+\alias{mice.impute.zip.boot}
 \title{Multiple Imputation of Flat File Zero-Inflated Count Data}
 \usage{
 mice.impute.zip(y, ry, x, type, wy = NULL)
@@ -74,23 +70,23 @@ The bootstrap functions draw a bootstrap sample from \code{y[ry]} and \code{x[ry
 }
 \section{Functions}{
 \itemize{
-\item \code{mice.impute.zip}: zero-inflated Poisson model; Bayesian regression variant
+\item \code{mice.impute.zip()}: zero-inflated Poisson model; Bayesian regression variant
 
-\item \code{mice.impute.zip.boot}: zero-inflated Poisson model; Bootstrap regression variant
+\item \code{mice.impute.zip.boot()}: zero-inflated Poisson model; Bootstrap regression variant
 
-\item \code{mice.impute.zinb}: zero-inflated NB model; Bayesian regression variant
+\item \code{mice.impute.zinb()}: zero-inflated negative binomial model; Bayesian regression variant
 
-\item \code{mice.impute.zinb.boot}: zero-inflated NB model; Bootstrap regression variant
+\item \code{mice.impute.zinb.boot()}: zero-inflated negative binomial model; Bootstrap regression variant
 
-\item \code{mice.impute.hp}: hurdle Poisson model; Bayesian regression variant
+\item \code{mice.impute.hp()}: hurdle Poisson model; Bayesian regression variant
 
-\item \code{mice.impute.hp.boot}: hurdle Poisson model; Bootstrap regression variant
+\item \code{mice.impute.hp.boot()}: hurdle Poisson model; Bootstrap regression variant
 
-\item \code{mice.impute.hnb}: hurdle NB model; Bayesian regression variant
+\item \code{mice.impute.hnb()}: hurdle negative binomial model; Bayesian regression variant
 
-\item \code{mice.impute.hnb.boot}: hurdle NB model; Bootstrap regression variant
+\item \code{mice.impute.hnb.boot()}: hurdle negative binomial model; Bootstrap regression variant
+
 }}
-
 \examples{
 ## Example 1:
 data(crim4w)
@@ -101,9 +97,14 @@ meth[8:9] <- "pmm"
 pred <- ini$predictorMatrix
 pred[,"id"] <- 0
 pred["ACRIM",] <- c(0,1,3,2,0,3,3,2,1)
-imp <- countimp( data = crim4w, method = meth, predictorMatrix = pred )
+## pscl is a suggested package, and the hurdle methods need it -- so the
+## example runs the imputation only where it is installed.
+if (requireNamespace("pscl", quietly = TRUE))
+  imp <- countimp( data = crim4w, method = meth, predictorMatrix = pred )
 
-## Example 2:
+\donttest{
+## Example 2: N = 10000 with m = 5 -- runs about 5 s, which is the CRAN
+## per-example budget, so it is kept out of the timed examples.
 ## Simulate zero-inflated NB data
 b0 <- 1
 b1 <- .3
@@ -111,14 +112,13 @@ b2 <- .3
 c0 <- 0
 c1 <- 2
 theta <- 1
-require("pscl")
 set.seed(1234)
 N <- 10000
 x1 <- rnorm(N)
 x2 <- rnorm(N)
 x3 <- rnorm(N)
 mu <- exp( b0 + b1 * x1 + b2 * x2 )
-yzinb <- rnegbin( N, mu, theta)
+yzinb <- MASS::rnegbin( N, mu, theta)
 pzero <- plogis( c1 * x3 )        # zero-infl. prob. depends on x3
 ## Introduce zero-inflation
 uni <- runif(N)
@@ -140,20 +140,21 @@ total <- round( pmis * nrow(data) )
 zinbmdata <- generate.md( zinbdata, pmis = .3, strength = c( .2, .8) )
 
 ## Impute missing data
-ini <- mice( zinbmdata, m = 5, maxit = 0)
+ini <- countimp( zinbmdata, m = 5, maxit = 0)
 pred <- ini$predictorMatrix 
 pred[1,] <- c(0, 2, 2, 3)
 meth<-ini$method
 meth[1] <- "zinb"
 imp.zinb <- countimp( zinbmdata, m = 5, method = meth,
-            predictorMatrix = pred, seed = 1234, print = FALSE)
+            predictorMatrix = pred, seed = 1234, printFlag = FALSE)
+}
 }
 \references{
 \itemize{
 \item Kleinke, K., & Reinecke, J. (2013a). Multiple Imputation of incomplete zero-inflated count data. \emph{Statistica Neerlandica}, available from \url{http://onlinelibrary.wiley.com/doi/10.1111/stan.12009/abstract}.
 \item Kleinke, K., & Reinecke, J. (2013b). \emph{countimp 1.0 -- A multiple imputation package for incomplete count data} [Technical Report]. University of Bielefeld, Faculty of Sociology, available from \url{www.uni-bielefeld.de/soz/kds/pdf/countimp.pdf}.
 \item Rubin, D. B. (1987). \emph{Multiple imputation for nonresponse in surveys}. New York: Wiley.
-\item Zeileis, A., Kleiber, C., & Jackman, S. (2008). Regression models for count data in R. \emph{Journal of Statistical Software}, 27(8), 1--25.
+\item Zeileis, A., Kleiber, C., & Jackman, S. (2008). Regression models for count data in R. \emph{Journal of Statistical Software}, 27(8), 1-25.
 }
 }
 \author{

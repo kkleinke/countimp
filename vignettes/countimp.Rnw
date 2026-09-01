@@ -1,0 +1,425 @@
+%\VignetteIndexEntry{Imputing incomplete count data with countimp}
+%\VignetteEngine{knitr::knitr}
+%\VignetteEncoding{UTF-8}
+%\VignetteDepends{countimp}
+
+% Why .Rnw and not .Rmd: an R Markdown vignette needs pandoc, which is not
+% part of a LaTeX installation and not present on every machine that builds
+% this package. Sweave/knitr vignettes need only LaTeX, which CRAN has
+% anyway. The engine is knitr rather than Sweave for the caching and the
+% cleaner chunk options.
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage[margin=1in]{geometry}
+
+\title{Imputing incomplete count data with \textbf{countimp}}
+\author{Kristian Kleinke}
+\date{Version 3.0.0}
+
+\begin{document}
+\maketitle
+
+<<setup, include=FALSE>>=
+library(knitr)
+opts_chunk$set(prompt = TRUE, comment = NA, background = "#f7f7f7",
+               fig.width = 6, fig.height = 3.6, fig.align = "center",
+               tidy = FALSE, cache = FALSE,
+               ## error = FALSE: a failing chunk stops the build instead of
+               ## printing its error into the document. knitr's default writes
+               ## the message where the result should be, and a locally built
+               ## PDF then looks finished while `R CMD build` -- which sets
+               ## this itself -- fails. Broken example code in a vignette is a
+               ## defect either way, so it should be loud.
+               error = FALSE)
+## 68, not the default 80: at 11pt the shaded box holds about 72
+## characters, and anything longer runs out of the shading rather than
+## wrapping. R's own width option is what controls this for printed output.
+options(width = 68, digits = 4)
+suppressMessages(library(countimp))
+@
+
+\begin{abstract}
+\noindent
+Counts are not continuous, and imputing them as if they were leaves a mark on
+the imputations that the pooled coefficients do not show. This vignette is
+about choosing the model that the data call for, and about seeing when the
+choice was wrong. It covers the model families \textbf{countimp} provides, the
+formula interface introduced in version~3, and the diagnostics that report a
+draw the data do not support.
+\end{abstract}
+
+\tableofcontents
+
+\section{The problem, in numbers}
+\label{sec:problem}
+
+Self-reported delinquency, 2064 adolescents, four annual waves. The data ship
+with the package as \texttt{crim4w}.
+
+<<data>>=
+data(crim4w)
+waves <- c("ACRIM", "BCRIM", "CCRIM", "DCRIM")
+t(sapply(crim4w[waves], function(x) {
+  x <- x[!is.na(x)]
+  c(mean = mean(x), var = var(x), zeros = mean(x == 0), max = max(x))
+}))
+@
+
+Three properties occur together here, and each of them rules out a method that
+would otherwise be reasonable:
+
+\begin{itemize}
+  \item \textbf{counts} --- integer, non-negative, so a normal model can
+    return $-0.7$ offences;
+  \item \textbf{overdispersion} --- variance three to four times the mean,
+    where a Poisson model assumes they are equal;
+  \item \textbf{an excess of zeros} --- more than half the sample, more than a
+    count distribution with this mean would produce.
+\end{itemize}
+
+And the values are missing:
+
+<<missing>>=
+round(100 * colMeans(is.na(crim4w[waves])), 1)
+round(100 * mean(complete.cases(crim4w)), 1)
+@
+
+Thirty-nine percent of the sample is complete. Analysing only those cases
+throws away three fifths of the data; the question is what to put in their
+place.
+
+\section{Why the choice of model matters}
+\label{sec:warum}
+
+The obvious objection to any of this is that it makes no difference: the
+regression coefficient comes out much the same whatever fills the gaps. On
+these data that objection is half right, and the half that is wrong is the
+interesting one.
+
+Take a plain question --- how does delinquency in wave~C relate to sex, school
+type and prior delinquency --- and answer it three ways.
+
+<<three-ways, cache=FALSE>>=
+model <- CCRIM ~ FEMALE + GY + ACRIM
+formulas <- list(CCRIM = CCRIM ~ FEMALE + GY + ACRIM + BCRIM + DCRIM)
+
+## 1. complete cases only
+cc <- crim4w[complete.cases(crim4w), ]
+f0 <- MASS::glm.nb(model, data = cc)
+c(GY = coef(f0)[["GY"]], SE = sqrt(diag(vcov(f0)))[["GY"]], n = nrow(cc))
+@
+
+<<countimp-run, cache=FALSE, message=FALSE>>=
+## 2. a count model that fits: zero-inflated Poisson
+imp <- countimp(crim4w, formulas = formulas,
+                family = list(CCRIM = zi_poisson()),
+                m = 20, maxit = 5, seed = 2026,
+                printFlag = FALSE)
+pooled <- mice::pool(with(imp, MASS::glm.nb(CCRIM ~ FEMALE + GY + ACRIM)))
+z <- summary(pooled)
+z[z$term == "GY", c("estimate", "std.error", "p.value")]
+pooled$pooled[pooled$pooled$term == "GY", c("fmi", "riv")]
+@
+
+Only \texttt{CCRIM} was given a formula here, so the three other waves keep
+the default method for their measurement level; \textbf{countimp} says so at
+startup. Section~\ref{sec:formulas} shows how to name a model for each of
+them.
+
+The point estimates are close. What differs is everything else: the standard
+error, because 1251 more cases contribute, and the fraction of missing
+information, which says how much of the uncertainty comes from the gaps rather
+than from the sample.
+
+The imputations themselves differ more than the coefficients do. This is what
+to look at:
+
+<<compare>>=
+describe <- function(x) c(mean = mean(x), var = var(x),
+                      zeros = mean(x == 0), max = max(x))
+filled <- unlist(lapply(seq_len(imp$m), function(i)
+  mice::complete(imp, i)$CCRIM[is.na(crim4w$CCRIM)]))
+rbind(observed = describe(crim4w$CCRIM[!is.na(crim4w$CCRIM)]),
+      imputed  = describe(filled))
+@
+
+A method that draws from the observed values --- predictive mean matching, the
+usual default --- cannot produce an impossible value, and that is its
+attraction. What it cannot do is reproduce the \emph{structure}: on these data
+it returns too few zeros, because it has no notion of a process that generates
+them. Where the research question concerns the proportion of non-offenders,
+that is the whole finding.
+
+\section{Choosing a model family}
+\label{sec:families}
+
+\textbf{countimp} provides four basic families and three restrictions of their
+support. The choice is not a matter of taste; it follows from what generates
+the counts.
+
+\begin{center}
+\begin{tabular}{lp{9.2cm}}
+\toprule
+\texttt{poisson\_count()} & variance equals the mean \\
+\texttt{nb()} & variance $\mu + \mu^2/\theta$: overdispersion \\
+\midrule
+\texttt{zi\_poisson()}, \texttt{zi\_nb()} & two processes: structural zeros
+  \emph{plus} a count process \\
+\texttt{hurdle\_poisson()}, \texttt{hurdle\_nb()} & two processes: whether at
+  all, then how many \\
+\midrule
+\texttt{zerotrunc\_*()} & counts that cannot be zero \\
+\texttt{bounded\_*()} & counts with a known upper limit \\
+\texttt{censored\_*()} & counts observed only up to a limit \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The distinction between zero inflation and a hurdle is worth a sentence,
+because both fit an excess of zeros and they mean different things. Under zero
+inflation a zero can arise two ways --- the respondent is not the sort of
+person who offends, or they are but did not this year. Under a hurdle model a
+zero means one thing only: the threshold was not crossed. For delinquency the
+hurdle reading is the natural one, in two parts that criminologists name
+separately: \emph{onset} and \emph{frequency}.
+
+Which family suits these data is an empirical question, and the imputations
+answer it. Same predictors throughout, only the family exchanged:
+
+<<families, cache=FALSE, message=FALSE>>=
+families <- list(Poisson = poisson_count(), "neg. binomial" = nb(),
+                 "hurdle (NB)" = hurdle_nb(),
+                 "hurdle (Poisson)" = hurdle_poisson(),
+                 "zero-infl. (Poisson)" = zi_poisson())
+tab <- t(sapply(families, function(fam) {
+  z <- suppressWarnings(countimp(crim4w, formulas = formulas,
+         family = list(CCRIM = fam), m = 20, maxit = 5,
+         seed = 2026, printFlag = FALSE))
+  describe(unlist(lapply(seq_len(z$m), function(i)
+    mice::complete(z, i)$CCRIM[is.na(crim4w$CCRIM)])))
+}))
+rbind(observed = describe(crim4w$CCRIM[!is.na(crim4w$CCRIM)]), tab)
+@
+
+Read the \texttt{zeros} column first. The Poisson model misses it by seventeen
+points: with no second process to account for them, it can only produce the
+zeros its mean implies. The two-part models land within five points of the
+observed share. And the negative binomial does something worse than missing a
+column --- it produces draws in the thousands where the largest observed
+value is 16. Section~\ref{sec:extrapolation} is about why.
+
+\section{The formula interface}
+\label{sec:formulas}
+
+Before version~3, the model was specified through a method name and a
+predictor matrix:
+
+<<classic, eval=FALSE>>=
+vorlage <- countimp(crim4w, maxit = 0, printFlag = FALSE)
+pred <- vorlage$predictorMatrix
+pred[, c("id", "RE", "HA")] <- 0
+countimp(crim4w, method = c(CCRIM = "zip"), predictorMatrix = pred, m = 20)
+@
+
+The name encoded the distribution, the number of levels and the random-effects
+structure at once (\texttt{2l.nb.noint.boot} names four decisions), and the
+predictors lived in a matrix that had to be edited by hand. Version~3 writes
+the same model as one expression per model part:
+
+<<formula-example, eval=FALSE>>=
+countimp(crim4w,
+         formulas = list(CCRIM = CCRIM ~ FEMALE + GY + ACRIM),
+         family   = list(CCRIM = zi_poisson()),
+         m = 20)
+@
+
+The multilevel structure and the intercept handling come from the formula ---
+\texttt{(1 | id)} present or not --- so they leave the name. Seventy of the
+eighty-five method names are reachable this way. The old interface is
+untouched and remains valid; the names are the backward compatibility.
+
+Two model parts get two arguments rather than a \texttt{pscl}-style pipe,
+because \texttt{|} already means grouping inside a random-effects term:
+
+<<two-parts, eval=FALSE>>=
+countimp(d, formulas = list(y ~ x1 + x2 + (1 | id)),
+            zero     = list(y ~ x1 + (1 | id)),
+            family   = hurdle_nb(), draw = "bayes")
+@
+
+A restriction of the support belongs to the family, next to the variable it
+describes, and is mandatory there:
+
+<<scale, eval=FALSE>>=
+countimp(d, formulas = list(visits ~ x1, days ~ x1),
+            family = list(visits = censored_poisson(censor = 10),
+                          days   = bounded_poisson(bounds = c(0, 5))),
+            m = 5)
+@
+
+\section{When the model extrapolates}
+\label{sec:extrapolation}
+
+The negative binomial produced draws in the hundreds. The natural suspicion is
+that $\theta$, the dispersion, is poorly determined --- and it is worth
+checking rather than assuming:
+
+<<theta>>=
+f <- MASS::glm.nb(CCRIM ~ FEMALE + GY + ACRIM + BCRIM + DCRIM, data = cc)
+c(theta = f$theta, se_log_theta = f$SE.theta / f$theta)
+@
+
+$\theta$ is determined perfectly well. The cause is not the family but the
+\textbf{link}. In a log-link model the predictors act multiplicatively,
+\[
+  \log \mu = \beta_0 + \beta_1 x_1 + \dots
+  \qquad\Longrightarrow\qquad
+  \mu = e^{\beta_0} \cdot e^{\beta_1 x_1} \cdots,
+\]
+and here three of the predictors are themselves counts running from zero to
+fifteen:
+
+<<extrapolation>>=
+b <- coef(f)
+count_preds <- c("ACRIM", "BCRIM", "DCRIM")
+contribution <- sapply(count_preds, function(v) b[[v]] * max(cc[[v]]))
+eta <- b[["(Intercept)"]] + sum(contribution)
+rbind(range = sapply(cc[count_preds], max), coefficient = b[count_preds],
+      contribution = contribution)
+c(eta = eta, mu = exp(eta), largest_observed = max(cc$CCRIM))
+@
+
+At the observed maxima of its own predictors the model expects 1380 offences
+where the largest value ever recorded is 13. Drawing $\beta$ from its posterior
+--- which is what makes the imputation proper rather than a prediction --- widens
+this further, and the negative binomial then adds $\mathrm{Var} = \mu +
+\mu^2/\theta$ on top. The imputed large values re-enter as predictors in the
+next iteration.
+
+This is not a defect of the negative binomial. It is what a richer model does
+with the freedom it has: it explains the many zeros through a heavy tail
+rather than through a separate process. In estimation that barely shows. In
+imputation the tail gets drawn.
+
+Two remedies, and on these data both are needed:
+
+<<remedies, cache=FALSE, message=FALSE>>=
+d_log <- crim4w
+d_log[count_preds] <- lapply(d_log[count_preds], log1p)
+run <- function(data, fam) suppressWarnings(countimp(data,
+  formulas = formulas, family = list(CCRIM = fam), m = 20, maxit = 5,
+  seed = 2026, printFlag = FALSE))
+imps <- function(z, data) describe(unlist(lapply(
+  seq_len(z$m), function(i) mice::complete(z, i)$CCRIM[is.na(data$CCRIM)])))
+zip <- zi_poisson()
+rbind(observed        = describe(crim4w$CCRIM[!is.na(crim4w$CCRIM)]),
+      "NB, raw"       = imps(run(crim4w, nb()),  crim4w),
+      "NB, log(1+x)"  = imps(run(d_log,  nb()),  d_log),
+      "ZIP, raw"      = imps(run(crim4w, zip),   crim4w),
+      "ZIP, log(1+x)" = imps(run(d_log,  zip),   d_log))
+@
+
+Transforming the count predictors removes the exponential extrapolation;
+choosing the family the data call for does the rest. The general lesson: a
+model that can do more is not thereby the better one.
+
+\section{Checking the imputations}
+\label{sec:diagnostics}
+
+The case above should not depend on someone thinking to look.
+\texttt{countimp\_diagnostics()} records every draw and reports those the data
+do not support:
+
+<<diagnostics, cache=FALSE, message=FALSE>>=
+## Every call to countimp_diagnostics() prints its table; captured here.
+quietly <- function(e) invisible(capture.output(e))
+quietly(countimp_diagnostics(enable = TRUE))
+quietly(countimp_diagnostics(reset = TRUE))
+invisible(run(crim4w, nb()))
+quietly(rec <- countimp_diagnostics())
+
+c(draws = nrow(rec), flagged = sum(rec$status == "flagged"),
+  largest_draw = max(rec$draw_max), observed_max = max(rec$obs_max),
+  ratio = round(max(rec$draw_ratio, na.rm = TRUE), 1))
+@
+
+The report itself names the variable, the draw and the ratio:
+
+<<diagnostics-excerpt>>=
+## as.data.frame() drops the diagnostics class, whose print method would
+## summarise the excerpt as if it were the whole record.
+as.data.frame(head(rec[rec$status == "flagged",
+  c("method", "problems", "obs_max", "draw_max", "draw_ratio")], 3))
+@
+
+The flag is \texttt{draw\_far\_above\_observed}, raised when a draw exceeds
+the largest observed value more than tenfold. It is \emph{raised, not acted
+on}: large values are the tail of the distribution, and discarding them until
+a small one arrives would pull the imputations downwards. The threshold is calibrated ---
+with a family that fits, the ratio stays below~4 across families and data
+situations.
+
+<<diagnostics-off, include=FALSE>>=
+countimp_diagnostics(enable = FALSE)
+@
+
+Three mistakes are common enough to name:
+
+\begin{enumerate}
+  \item \textbf{The row number as a predictor.} The default takes every
+    column, \texttt{id} included. It carries no information and costs a
+    parameter.
+  \item \textbf{Fully coded categories.} Three school types as three dummies
+    sum to one and are collinear with the intercept. \texttt{glm()} sets one
+    coefficient to \texttt{NA}; an imputation model cannot.
+  \item \textbf{Imputing every wave from every other.} Statistically the
+    cleaner choice, but with count models across five iterations it can
+    amplify.
+\end{enumerate}
+
+\section{Two levels}
+\label{sec:two-levels}
+
+Clustered counts --- pupils in classes, patients in wards --- take the same
+families with a random-effects term in the formula:
+
+<<two-levels, eval=FALSE>>=
+countimp(d, formulas = list(y ~ x1 + (1 | class)),
+            family = list(y = nb()), m = 20)
+@
+
+A variable that is constant within its cluster (class size, ward type) is a
+different matter: it carries one value per cluster but occupies one cell per
+row, and imputing it cell by cell destroys that constancy. Those variables
+take the \texttt{2lonly} methods through the classic interface:
+
+<<cluster-level, eval=FALSE>>=
+countimp(d, method = c(y = "2l.poisson", classsize = "2lonly.pmm"),
+            predictorMatrix = pred, m = 20)
+@
+
+\section{Beyond R}
+\label{sec:kern}
+
+The computational core is available as a standalone C++ program, which makes
+countimp usable from software that is not R. It gives bit-identical
+results across macOS, Linux and Windows for the same seed --- not something to
+take for granted, since \texttt{std::poisson\_distribution} returns different
+values per standard library from the same random numbers. The core therefore
+computes its distributions itself.
+
+Through the companion package \textbf{rcountimp} the same core writes what
+Mplus expects for \texttt{TYPE = IMPUTATION}: one data file per imputation, the
+list file naming them, and an input skeleton with the variable names and the
+\texttt{COUNT} declaration. Only the analysis model remains to be filled in.
+
+\section*{Acknowledgements}
+
+The delinquency data are used with permission; see \texttt{?crim4w}.
+
+\end{document}

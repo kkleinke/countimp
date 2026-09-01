@@ -1,0 +1,12 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.git$
+^\.gitignore$
+^\.github$
+^countimp_.*\.tar\.gz$
+^analyse$
+^berichte$
+^pruef$
+^\.DS_Store$
+^revdep$
+^cran-comments\.md$

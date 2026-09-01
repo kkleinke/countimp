@@ -9,8 +9,13 @@ function (p, data, where, m, imp, r, visitSequence, fromto, printFlag,
   maxit <- to - from + 1
   chainVar <- chainMean <- NULL
   if (maxit > 0)
-    chainVar <- chainMean <- array(0, dim = c(length(visitSequence),
-                                              maxit, m), dimnames = list(dimnames(data)[[2]][visitSequence],
+    ## One row per variable, not per visited variable. mice 2.46 sized these
+    ## arrays by length(visitSequence); mice >= 3.0 expects one row for every
+    ## column of the data and rbind()s the arrays in mice.mids(), which fails
+    ## on the shorter version. Rows for variables that are never visited stay
+    ## NA, which is what mice itself stores for them.
+    chainVar <- chainMean <- array(NA_real_, dim = c(ncol(data),
+                                              maxit, m), dimnames = list(dimnames(data)[[2]],
                                                                          seq_len(maxit), paste("Chain", seq_len(m))))
   if (maxit < 1)
     iteration <- 0
@@ -77,13 +82,41 @@ function (p, data, where, m, imp, r, visitSequence, fromto, printFlag,
             if (k == 1)
               check.df(x, y, ry)
             keep <- remove.lindep(x, y, ry, ...)
+            ## Grouping identifiers survive this filter too -- same reasoning
+            ## as in check.data() (B91): an identifier is a label, not a
+            ## covariate.
+            ##
+            ## The damage was worse here than there, because remove.lindep()
+            ## works on the OBSERVED rows only and decides through an
+            ## eigendecomposition: which of the two identifiers went depended
+            ## on the data. Measured on 23 August 2026, same setup, only the
+            ## number of schools differing:
+            ##
+            ##   S = 50  drops 'school'  -> 'class' remains  -> later error
+            ##   S = 60  drops 'class'   -> 'school' remains -> RUNS, two-level
+            ##
+            ## In the second case a call meant as three-level silently became
+            ## two-level -- and the method's own guard (sum(type == -2) > 1)
+            ## could not fire, because it saw only one identifier left. That
+            ## also explains why the defect looked sporadic: it hangs on the
+            ## eigendecomposition of the observed rows, hence on sample and
+            ## seed.
+            if (length(keep) == length(type)) keep[type == -2L] <- TRUE
             x <- x[, keep, drop = FALSE]
             type <- type[keep]
-            f <- paste("mice.impute", theMethod, sep = ".")
+            f <- .countimp_find_method(theMethod)
+            if (is.null(f))
+              stop("Imputation method '", theMethod, "' was not found.",
+                   call. = FALSE)
             imputes <- p$data[wy, j]
             imputes[!cc] <- NA
-            imputes[cc] <- do.call(f, args = list(y,
-                                                  ry, x, wy = wy, type = type, ...))
+            ## The univariate-method contract (see .countimp_call_method in
+            ## families.R). Two deliberate deviations from the mice 2.46 code
+            ## this sampler was copied from: `x` is passed as a numeric matrix,
+            ## and the first three arguments are passed by name.
+            imputes[cc] <- .countimp_call_method(f, y = y, ry = ry, x = x,
+                                                 wy = wy, type = type,
+                                                 vname = vname, ...)
             imp[[j]][, i] <- imputes
             p$data[(!r[, j]) & where[, j], j] <- imp[[j]][(!r[,
                                                               j])[where[, j]], i]
@@ -114,18 +147,21 @@ function (p, data, where, m, imp, r, visitSequence, fromto, printFlag,
       if (length(visitSequence) > 0) {
         for (j in seq_along(visitSequence)) {
           jj <- visitSequence[j]
+          ## Index by the variable's own column position (jj), not by its
+          ## place in the visit sequence (j): the arrays now have one row per
+          ## variable, so j would write into the wrong rows.
           if (!is.factor(data[, jj])) {
-            chainVar[j, k2, ] <- apply(imp[[jj]], 2,
+            chainVar[jj, k2, ] <- apply(imp[[jj]], 2,
                                        var, na.rm = TRUE)
-            chainMean[j, k2, ] <- colMeans(as.matrix(imp[[jj]]),
+            chainMean[jj, k2, ] <- colMeans(as.matrix(imp[[jj]]),
                                            na.rm = TRUE)
           }
           if (is.factor(data[, jj])) {
             for (mm in seq_len(m)) {
               nc <- as.integer(factor(imp[[jj]][, mm],
                                       levels = levels(data[, jj])))
-              chainVar[j, k2, mm] <- var(nc, na.rm = TRUE)
-              chainMean[j, k2, mm] <- mean(nc, na.rm = TRUE)
+              chainVar[jj, k2, mm] <- var(nc, na.rm = TRUE)
+              chainMean[jj, k2, mm] <- mean(nc, na.rm = TRUE)
             }
           }
         }
@@ -251,6 +287,27 @@ function (setup, data)
   visitSequence <- setup$visitSequence
   nwhere <- setup$nwhere
   nvar <- setup$nvar
+
+  ## NA marks a variable the caller did not mention (see the named-`method`
+  ## branch in countimp()). Such a variable gets the default for its type,
+  ## variable by variable. The rule below -- defaults only when *every* entry is
+  ## "" -- comes from mice 2.46 and is kept for unnamed vectors, but on its own
+  ## it meant that naming one variable left every other one unimputed (B80).
+  if (anyNA(method)) {
+    for (j in which(is.na(method))) {
+      if (nwhere[j] == 0L) {
+        method[j] <- ""      # nothing to impute here
+        next
+      }
+      y <- data[, j]
+      method[j] <- if (is.numeric(y)) defaultMethod[1]
+        else if (nlevels(y) == 2 || is.logical(y)) defaultMethod[2]
+        else if (is.ordered(y) && nlevels(y) > 2) defaultMethod[4]
+        else if (nlevels(y) > 2) defaultMethod[3]
+        else defaultMethod[1]
+    }
+  }
+
   if (all(method == "")) {
     for (j in visitSequence) {
       y <- data[, j]
@@ -298,11 +355,17 @@ function (setup, data)
     if (length(method[active.check]) == 0) 
       fullNames <- character(0)
   }
-  notFound <- !vapply(fullNames, exists, logical(1), mode = "function", 
-                      inherits = TRUE)
-  if (any(notFound)) {
-    stop(paste("The following functions were not found:", 
-               paste(fullNames[notFound], collapse = ", ")))
+  ## Resolve through countimp -> workspace -> mice instead of the search path,
+  ## so that methods supplied by mice are found when mice is installed but not
+  ## attached (see .countimp_find_method in families.R).
+  shortNames <- sub("^mice\\.impute\\.", "", fullNames)
+  missing <- .countimp_missing_methods(shortNames)
+  if (length(missing)) {
+    stop("The following imputation methods were not found: ",
+         paste(missing, collapse = ", "), ".\n",
+         "  countimp looks for a function mice.impute.<method> in countimp,\n",
+         "  in the global environment and in mice. Check the spelling, or\n",
+         "  install the package that provides the method.", call. = FALSE)
   }
   for (j in visitSequence) {
     y <- data[, j]
@@ -373,8 +436,21 @@ function (setup, data, allow.na = FALSE, remove_collinear = TRUE,
   post <- setup$post
   isclassvar <- apply(pred == -2, 2, any)
   for (j in seq_len(nvar)) {
-    if (isclassvar[j] && is.factor(data[, j])) 
-      stop("Class variable (column ", j, ") cannot be factor. Convert to numeric by as.integer()")
+    if (isclassvar[j] && is.factor(data[, j]))
+      ## Name the variable, not the column number, and say why -- a grouping
+      ## coded as a factor can be expanded into indicator columns further
+      ## down, which turns one grouping into nlevels-1 predictors without any
+      ## visible sign. The formula interface converts grouping variables
+      ## itself (see countimp()), so this is the classic route only.
+      stop(sprintf(paste0(
+        "countimp: grouping variable `%s` (column %d) is a factor.\n",
+        "  A grouping variable must be integer, because a factor can be ",
+        "expanded into\n  indicator columns further down -- with %d levels ",
+        "that would silently produce\n  %d predictors instead of one ",
+        "grouping.\n  Fix:  data$%s <- as.integer(data$%s)"),
+        varnames[j], j, nlevels(data[, j]),
+        max(nlevels(data[, j]) - 1L, 0L),
+        varnames[j], varnames[j]), call. = FALSE)
   }
   for (j in seq_len(nvar)) {
     if (!is.passive(meth[j])) {
@@ -409,6 +485,27 @@ function (setup, data, allow.na = FALSE, remove_collinear = TRUE,
     }
   }
   ispredictor <- apply(pred != 0, 2, any)
+  ## Grouping identifiers (-2) are NOT regressors and are exempt from the
+  ## collinearity check.
+  ##
+  ## Measured on 23 August 2026: in a school-class data set the class number
+  ## correlates with the school number, because both are numbered
+  ## consecutively -- 0.998827 at 20 schools, 0.999479 at 30. The default
+  ## threshold of find.collinear() is 0.999, so from 30 schools upwards the
+  ## class identifier was discarded, and SILENTLY:
+  ##
+  ##   * a model meant as three-level ran on as two-level, without a warning;
+  ##   * a 2lonly method saw type = (1, 1) instead of the identifier and asked
+  ##     the user to "code one predictor as -2" -- an instruction they had
+  ##     already followed.
+  ##
+  ## The correlation between two identifiers is a property of the numbering,
+  ## not of the model: clusters 41 to 60 simply sit in the higher-numbered
+  ## schools. An identifier is a label, not a covariate, and must therefore
+  ## never be dropped for collinearity. Found while building the three-level
+  ## simulations.
+  isclassvar2 <- apply(pred == -2, 2, any)
+  ispredictor <- ispredictor & !isclassvar2
   if (any(ispredictor)) {
     droplist <- find.collinear(data[, ispredictor, drop = FALSE], 
                                ...)

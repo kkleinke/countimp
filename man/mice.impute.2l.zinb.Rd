@@ -9,70 +9,191 @@
 \alias{mice.impute.2l.zinb.noint.zero.boot}
 \alias{mice.impute.2l.zinb.noint.count}
 \alias{mice.impute.2l.zinb.noint.count.boot}
-\alias{mice.impute.2l.zinb.boot}
-\alias{mice.impute.2l.zinb.noint.both.boot}
-\alias{mice.impute.2l.zinb.noint.both}
-\alias{mice.impute.2l.zinb.noint.count.boot}
-\alias{mice.impute.2l.zinb.noint.count}
-\alias{mice.impute.2l.zinb.noint.zero.boot}
-\alias{mice.impute.2l.zinb.noint.zero}
 \alias{mice.impute.2l.zip}
 \alias{mice.impute.2l.zip.boot}
-\alias{mice.impute.2l.zip.noint.both.boot}
 \alias{mice.impute.2l.zip.noint.both}
-\alias{mice.impute.2l.zip.noint.count.boot}
-\alias{mice.impute.2l.zip.noint.count}
-\alias{mice.impute.2l.zip.noint.zero.boot}
+\alias{mice.impute.2l.zip.noint.both.boot}
 \alias{mice.impute.2l.zip.noint.zero}
+\alias{mice.impute.2l.zip.noint.zero.boot}
+\alias{mice.impute.2l.zip.noint.count}
+\alias{mice.impute.2l.zip.noint.count.boot}
 \title{Multiple Imputation of Zero-Inflated Two-Level Count Data}
 \usage{
-mice.impute.2l.zinb(y, ry, x, type, intercept.c = TRUE, intercept.z = TRUE,
-  wy = NULL, EV = TRUE)
+mice.impute.2l.zinb(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = TRUE,
+  intercept.z = TRUE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zinb.boot(y, ry, x, type, intercept.c = TRUE,
-  intercept.z = TRUE, wy = NULL, EV = TRUE)
+mice.impute.2l.zinb.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = TRUE,
+  intercept.z = TRUE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zinb.noint.both.boot(y, ry, x, type, intercept.c = FALSE,
-  intercept.z = FALSE, wy = NULL, EV = TRUE)
+mice.impute.2l.zinb.noint.both(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = FALSE,
+  intercept.z = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zinb.noint.both(y, ry, x, type, intercept.c = FALSE,
-  intercept.z = FALSE, wy = NULL, EV = TRUE)
+mice.impute.2l.zinb.noint.both.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = FALSE,
+  intercept.z = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zinb.noint.count.boot(y, ry, x, type, intercept.c = FALSE,
-  intercept.z = TRUE, wy = NULL, EV = TRUE)
+mice.impute.2l.zinb.noint.count(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = FALSE,
+  intercept.z = TRUE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zinb.noint.count(y, ry, x, type, intercept.c = FALSE,
-  intercept.z = TRUE, wy = NULL, EV = TRUE)
+mice.impute.2l.zinb.noint.count.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = FALSE,
+  intercept.z = TRUE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zinb.noint.zero.boot(y, ry, x, type, intercept.c = TRUE,
-  intercept.z = FALSE, wy = NULL, EV = TRUE)
+mice.impute.2l.zinb.noint.zero(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = TRUE,
+  intercept.z = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zinb.noint.zero(y, ry, x, type, intercept.c = TRUE,
-  intercept.z = FALSE, wy = NULL, EV = TRUE)
+mice.impute.2l.zinb.noint.zero.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = TRUE,
+  intercept.z = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zip(y, ry, x, type, intercept.c = TRUE, intercept.z = TRUE,
-  wy = NULL, EV = TRUE)
+mice.impute.2l.zip(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = TRUE,
+  intercept.z = TRUE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zip.boot(y, ry, x, type, intercept.c = TRUE,
-  intercept.z = TRUE, wy = NULL, EV = TRUE)
+mice.impute.2l.zip.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = TRUE,
+  intercept.z = TRUE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zip.noint.both.boot(y, ry, x, type, intercept.c = FALSE,
-  intercept.z = FALSE, wy = NULL, EV = TRUE)
+mice.impute.2l.zip.noint.both(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = FALSE,
+  intercept.z = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zip.noint.both(y, ry, x, type, intercept.c = FALSE,
-  intercept.z = FALSE, wy = NULL, EV = TRUE)
+mice.impute.2l.zip.noint.both.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = FALSE,
+  intercept.z = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zip.noint.count.boot(y, ry, x, type, intercept.c = FALSE,
-  intercept.z = TRUE, wy = NULL, EV = TRUE)
+mice.impute.2l.zip.noint.count(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = FALSE,
+  intercept.z = TRUE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zip.noint.count(y, ry, x, type, intercept.c = FALSE,
-  intercept.z = TRUE, wy = NULL, EV = TRUE)
+mice.impute.2l.zip.noint.count.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = FALSE,
+  intercept.z = TRUE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zip.noint.zero.boot(y, ry, x, type, intercept.c = TRUE,
-  intercept.z = FALSE, wy = NULL, EV = TRUE)
+mice.impute.2l.zip.noint.zero(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = TRUE,
+  intercept.z = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.zip.noint.zero(y, ry, x, type, intercept.c = TRUE,
-  intercept.z = FALSE, wy = NULL, EV = TRUE)
+mice.impute.2l.zip.noint.zero.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept.c = TRUE,
+  intercept.z = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 }
 \arguments{
 \item{y}{Numeric vector with incomplete data in long format (i.e. the groups are stacked upon each other)}
@@ -89,7 +210,7 @@ mice.impute.2l.zip.noint.zero(y, ry, x, type, intercept.c = TRUE,
 
 \item{wy}{Logical vector of length \code{length(y)}. A \code{TRUE} value indicates locations in \code{y} for which imputations are created. Default is \code{!ry}}
 
-\item{EV}{should automatic outlier handling of imputed values be enabled?  Default is \code{TRUE}: extreme imputations will be identified. These values will be replaced by imputations obtained by predictive mean matching (function \code{mice.impute.midastouch()})}
+\item{EV}{should automatic outlier handling of imputed values be enabled? Default is \code{FALSE} since version 2.0.8. Setting \code{EV = TRUE} identifies extreme imputations and replaces them by predictive mean matching draws (\code{mice.impute.midastouch()}). This is \strong{not recommended}: for count data the upper tail is part of the target distribution, not an artefact. In a simulation study (n = 500, 35 \% MAR, R = 1000) \code{EV = TRUE} biased the regression slope by -14.3 \% and reduced the coverage of the nominal 95 \% confidence interval to 79.2 \% (versus 94.1 \% with \code{EV = FALSE}). The option is retained only for reproducing earlier analyses.}
 }
 \value{
 Numeric vector of length \code{sum(!ry)} with imputations
@@ -100,7 +221,10 @@ The functions impute zero-inflated multilevel count data based on a two-level Po
 \details{
 Model specification details:
    \itemize{
-     \item -2 = class variable (only one class variable is allowed!)
+     \item -2 = grouping (class) variable. More than one may be coded: two
+       entries give a three-level model, e.g. pupils in classes in schools.
+       The FIRST one carries the random slopes and the \code{.noint} flag;
+       further levels enter as plain random intercepts.
      \item 0 = variable not included in imputation model
      \item 1 = variable will be included as a fixed effect (zero \emph{and} count model)
      \item 2 = variable will be included as a fixed \emph{and} random effect (zero \emph{and} count model)
@@ -111,57 +235,78 @@ Model specification details:
    }
 The Bayesian regression variants (see Rubin 1987, p. 169-170) consist of the following steps:
  \enumerate{
- \item Fit the zero model (a two-level binomial generalized linear mixed effects model), using the \code{glmmTMB} function from package \pkg{glmmTMB}; find bhat, the posterior mean, and V(bhat), the posterior variance of model parameters b
- \item Draw b* from N(bhat,V(bhat))
- \item Compute predicted probabilities for having a zero vs. non-zero count
- \item Draw imputations (zeros and ones) from a binomial distribution with the respective individual probabilities obtained from step 3.
- \item Fit the count model (a two-level Poisson or NB model) using the \code{glmmTMB} function from package \pkg{glmmTMB}; find bhat, the posterior mean, and V(bhat), the posterior variance of model parameters b.
- \item  Draw b* from N(bhat,V(bhat))
- \item Compute predicted values using parameters b* and replace non-zero imputations (from step 4) by a draw from a zero-truncated NB distribution with mean parameter mu being the count predicted for the respective incomplete case.
+ \item Fit the zero-inflation model -- \emph{one} \code{glmmTMB} model with both a conditional (count) part and a zero-inflation part -- to the observed data.
+ \item Draw b* = (beta*, u*, betazi*, log theta*) from the joint Laplace posterior of \emph{all} model parameters. Because the two model parts are estimated jointly and are correlated, one draw must move both linear predictors; drawing them separately would discard that correlation.
+ \item Compute pi*, the individual probability of belonging to the zero-inflation process, and mu*, the individual count rate, from b*.
+ \item For each incomplete case draw an indicator from Bernoulli(pi*). Cases in the zero-inflation process are imputed as zero.
+ \item Impute the remaining cases by a draw from the (untruncated) Poisson or NB count distribution with rate mu*. Note that this draw may itself return a zero: under zero inflation a count-process unit may legitimately have a zero count. This is what distinguishes a zero-inflation model from a hurdle model, for which \code{\link{mice.impute.2l.hnb}} and \code{\link{mice.impute.2l.hp}} should be used instead.
  }
-The bootstrap functions draw a bootstrap sample from \code{y[ry]} and \code{x[ry,]} (Note: we resample clusters rather than individual cases) and consist of the following steps:
-\enumerate{
-\item Fit the zero model to the bootstrap sample
-\item Compute predicted probabilities for having a zero vs. non-zero count
-\item Draw imputations from a binomial distribution.
-\item Fit the count model to the boostrap sample
-\item Compute predicted counts and draw non-zero imputations (from step 3) from a zero-truncated Poisson or NB distribution.
-}
+The bootstrap functions resample \emph{clusters} (not individual cases) from \code{y[ry]} and \code{x[ry,]}, then fit the same zero-inflation model to the bootstrap sample and carry out steps 3 to 5 at the bootstrap estimates. The resampling itself supplies the parameter uncertainty, so no posterior draw is added.
 }
 \section{Functions}{
 \itemize{
-\item \code{mice.impute.2l.zinb}: Bayesian regression variant; random intercepts
+\item \code{mice.impute.2l.zinb()}: Bayesian regression variant; random intercepts
 
-\item \code{mice.impute.2l.zinb.boot}: bootstrap regression variant; random intercepts
+\item \code{mice.impute.2l.zinb.boot()}: bootstrap regression variant; random intercepts
 
-\item \code{mice.impute.2l.zinb.noint.both.boot}: bootstrap regression variant; fixed intercepts
+\item \code{mice.impute.2l.zinb.noint.both()}: Bayesian regression variant; fixed intercepts
 
-\item \code{mice.impute.2l.zinb.noint.both}: Bayesian regression variant; fixed intercepts
+\item \code{mice.impute.2l.zinb.noint.both.boot()}: bootstrap regression variant; fixed intercepts
 
-\item \code{mice.impute.2l.zinb.noint.count.boot}: bootstrap regression variant; fixed intercept in count model
+\item \code{mice.impute.2l.zinb.noint.count()}: Bayesian regression variant; fixed intercept in count model
 
-\item \code{mice.impute.2l.zinb.noint.count}: Bayesian regression variant; fixed intercept in count model
+\item \code{mice.impute.2l.zinb.noint.count.boot()}: bootstrap regression variant; fixed intercept in count model
 
-\item \code{mice.impute.2l.zinb.noint.zero.boot}: bootstrap regression variant; fixed interceot in zero model
+\item \code{mice.impute.2l.zinb.noint.zero()}: Bayesian regression variant; fixed intercept in zero model
 
-\item \code{mice.impute.2l.zinb.noint.zero}: Bayesian regression variant; fixed intercept in zero model
+\item \code{mice.impute.2l.zinb.noint.zero.boot()}: bootstrap regression variant; fixed intercept in zero model
 
-\item \code{mice.impute.2l.zip}: Bayesian regression variant; random intercepts
+\item \code{mice.impute.2l.zip()}: Bayesian regression variant; random intercepts
 
-\item \code{mice.impute.2l.zip.boot}: bootstrap regression variant; random intercepts
+\item \code{mice.impute.2l.zip.boot()}: bootstrap regression variant; random intercepts
 
-\item \code{mice.impute.2l.zip.noint.both.boot}: bootstrap regression variant; fixed intercepts
+\item \code{mice.impute.2l.zip.noint.both()}: Bayesian regression variant; fixed intercepts
 
-\item \code{mice.impute.2l.zip.noint.both}: Bayesian regression variant; fixed intercepts
+\item \code{mice.impute.2l.zip.noint.both.boot()}: bootstrap regression variant; fixed intercepts
 
-\item \code{mice.impute.2l.zip.noint.count.boot}: bootstrap regression variant; fixed intercept in count model
+\item \code{mice.impute.2l.zip.noint.count()}: Bayesian regression variant; fixed intercept in count model
 
-\item \code{mice.impute.2l.zip.noint.count}: Bayesian regression variant; fixed intercept in count model
+\item \code{mice.impute.2l.zip.noint.count.boot()}: bootstrap regression variant; fixed intercept in count model
 
-\item \code{mice.impute.2l.zip.noint.zero.boot}: bootstrap regression variant; fixed interceot in zero model
+\item \code{mice.impute.2l.zip.noint.zero()}: Bayesian regression variant; fixed intercept in zero model
 
-\item \code{mice.impute.2l.zip.noint.zero}: Bayesian regression variant; fixed intercept in zero model
+\item \code{mice.impute.2l.zip.noint.zero.boot()}: bootstrap regression variant; fixed intercept in zero model
+
 }}
+\section{Corrected in 3.0.0}{
+
+  Up to 2.6.0 these methods fitted a \emph{hurdle} model (a binomial GLMM
+  on 1\{y = 0\} plus an untruncated count GLMM on the positive subset) but
+  drew from it as if the count part were unrestricted. Two errors compounded:
+  the count model was fitted to positive-only data without accounting for the
+  truncation, and a case assigned to the count process could still be imputed
+  as zero. Both push in the same direction -- too many zeros, conditional
+  mean too small. In simulation (R = 200, m = 5, n = 625, 38-40 \% MAR) the
+  coverage of the nominal 95 \% interval for the marginal covariate effect
+  was 88.5 \% under a true zero-inflation process and 87.0 \% under a true
+  hurdle process. These methods now fit a genuine zero-inflation model, which
+  restores coverage to 91.5 \% under a zero-inflation process; for hurdle
+  data use \code{\link{mice.impute.2l.hnb}} / \code{\link{mice.impute.2l.hp}}
+  (92.0 \%). Imputations from earlier versions are not comparable.
+  The replication script is \code{skripte/b30_zi_vergleich.R}.
+}
+
+\section{Corrected in 2.6.0}{
+
+  Two defects affected every two-level hurdle and ZI method up to 2.5.0.
+  (1) \code{intercept.z} was declared but never used: both model parts were
+  governed by \code{intercept.c}, so \code{.noint.zero} had no effect and
+  \code{.noint.count} removed the random intercept from both parts.
+  (2) In the count model the predictor set built from \code{type} was
+  overwritten by all variables except the class variable, so codes 3-6 did
+  not restrict a predictor to one model part. Both are fixed; imputations
+  from earlier versions are not comparable where codes 3-6 were used.
+}
 
 \author{
 Kristian Kleinke

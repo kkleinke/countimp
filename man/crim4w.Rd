@@ -4,7 +4,9 @@
 \name{crim4w}
 \alias{crim4w}
 \title{The CRIMOC data set in wide format}
-\format{A data frame with 2064 rows and 9 variables}
+\format{
+A data frame with 2064 rows and 9 variables
+}
 \usage{
 data(crim4w)
 }

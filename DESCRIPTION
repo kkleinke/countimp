@@ -1,14 +1,29 @@
 Package: countimp
-Title: Multiple Imputation of incomplete count data
-Version: 2.0.7
-Authors@R: c(person("Kristian", "Kleinke", role = c("aut","cre"),
-    email = "countimp@kkleinke.com"),
-    person("Jost", "Reinecke", role = "ths",
+Title: Multiple Imputation of Incomplete Count Data
+Version: 3.0.1
+Date: 2026-09-01
+Authors@R: c(person("Kristian", "Kleinke", role = c("aut","cre","cph"),
+    email = "mail@kristian-kleinke.de"),
+    person("Jost", "Reinecke", role = c("aut", "ths"),
     email = "jost.reinecke@uni-bielefeld.de"))
-Description: This package offers various solutions to multiply impute incomplete count data (ordinary, overdispersed, zero-inflated, multilevel).  All functions work as add-ons to the mice package (Multiple imputation using Fully Conditional Specification). Imputation models and methods are specified in mice, and the actual imputation process is done by mice.
-Depends: R (>= 3.4.0), glmmTMB, aster, mice (>= 2.15), MASS, pscl
+Description: Multiple imputation of incomplete count data: ordinary,
+    overdispersed, zero-inflated and hurdle counts, for single-level and
+    two-level (clustered) data. Imputation models are specified either through
+    an 'lme4'-style formula interface (formulas, family, draw) or, as before,
+    through a predictor matrix and type codes. The imputation engine is
+    contained in the package; 'mice' (Van Buuren and Groothuis-Oudshoorn,
+    2011, <doi:10.18637/jss.v045.i03>) is optional and only needed for
+    non-count imputation methods and for pooling. Methods follow Kleinke and
+    Reinecke (2013, <doi:10.1111/stan.12009>).
+Depends: R (>= 3.4.0)
+Imports: glmmTMB, MASS, Matrix, nnet, stats, TMB, utils
+Suggests: mice (>= 3.0), pscl, nlme, testthat (>= 3.0.0), knitr
+VignetteBuilder: knitr
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 6.0.1
-URL: https://www.kkleinke.com/#software
+URL: https://github.com/kkleinke/countimp
+BugReports: https://github.com/kkleinke/countimp/issues
+Config/roxygen2/version: 8.1.0
+Config/testthat/edition: 3
+RoxygenNote: 7.3.3

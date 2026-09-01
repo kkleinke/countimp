@@ -5,52 +5,103 @@
 \alias{mice.impute.2l.poisson.boot}
 \alias{mice.impute.2l.poisson.noint}
 \alias{mice.impute.2l.poisson.noint.boot}
-\alias{mice.impute.2l.poisson.noint}
-\alias{mice.impute.2l.poisson.boot}
-\alias{mice.impute.2l.poisson.noint.boot}
 \alias{mice.impute.2l.nb}
-\alias{mice.impute.2l.nb.noint}
 \alias{mice.impute.2l.nb.boot}
+\alias{mice.impute.2l.nb.noint}
 \alias{mice.impute.2l.nb.noint.boot}
 \alias{mice.impute.2l.nb2}
-\alias{mice.impute.2l.nb2.noint}
 \alias{mice.impute.2l.nb2.boot}
+\alias{mice.impute.2l.nb2.noint}
 \alias{mice.impute.2l.nb2.noint.boot}
 \title{Multiple Imputation of Incomplete Two-Level Count Data}
 \usage{
-mice.impute.2l.poisson(y, ry, x, type, intercept = TRUE, wy = NULL,
-  EV = TRUE)
+mice.impute.2l.poisson(y, ry, x, type, intercept = TRUE, wy = NULL, EV = FALSE)
 
-mice.impute.2l.poisson.noint(y, ry, x, type, intercept = FALSE, wy = NULL,
-  EV = TRUE)
+mice.impute.2l.poisson.noint(
+  y,
+  ry,
+  x,
+  type,
+  intercept = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.poisson.boot(y, ry, x, type, intercept = TRUE, wy = NULL,
-  EV = TRUE)
+mice.impute.2l.poisson.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept = TRUE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.poisson.noint.boot(y, ry, x, type, intercept = FALSE,
-  wy = NULL, EV = TRUE)
+mice.impute.2l.poisson.noint.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.nb(y, ry, x, type, intercept = TRUE, wy = NULL, EV = TRUE)
+mice.impute.2l.nb(y, ry, x, type, intercept = TRUE, wy = NULL, EV = FALSE)
 
-mice.impute.2l.nb.noint(y, ry, x, type, intercept = FALSE, wy = NULL,
-  EV = TRUE)
+mice.impute.2l.nb.noint(
+  y,
+  ry,
+  x,
+  type,
+  intercept = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.nb.boot(y, ry, x, type, intercept = TRUE, wy = NULL,
-  EV = TRUE)
+mice.impute.2l.nb.boot(y, ry, x, type, intercept = TRUE, wy = NULL, EV = FALSE)
 
-mice.impute.2l.nb.noint.boot(y, ry, x, type, intercept = FALSE, wy = NULL,
-  EV = TRUE)
+mice.impute.2l.nb.noint.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.nb2(y, ry, x, type, intercept = TRUE, wy = NULL, EV = TRUE)
+mice.impute.2l.nb2(y, ry, x, type, intercept = TRUE, wy = NULL, EV = FALSE)
 
-mice.impute.2l.nb2.noint(y, ry, x, type, intercept = FALSE, wy = NULL,
-  EV = TRUE)
+mice.impute.2l.nb2.noint(
+  y,
+  ry,
+  x,
+  type,
+  intercept = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.nb2.boot(y, ry, x, type, intercept = TRUE, wy = NULL,
-  EV = TRUE)
+mice.impute.2l.nb2.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept = TRUE,
+  wy = NULL,
+  EV = FALSE
+)
 
-mice.impute.2l.nb2.noint.boot(y, ry, x, type, intercept = FALSE, wy = NULL,
-  EV = TRUE)
+mice.impute.2l.nb2.noint.boot(
+  y,
+  ry,
+  x,
+  type,
+  intercept = FALSE,
+  wy = NULL,
+  EV = FALSE
+)
 }
 \arguments{
 \item{y}{Numeric vector with incomplete data in long format (i.e. the groups are stacked upon each other)}
@@ -65,21 +116,33 @@ mice.impute.2l.nb2.noint.boot(y, ry, x, type, intercept = FALSE, wy = NULL,
 
 \item{wy}{Logical vector of length \code{length(y)}. A \code{TRUE} value indicates locations in \code{y} for which imputations are created. Default is \code{!ry}}
 
-\item{EV}{should automatic outlier handling of imputed values be enabled?  Default is \code{TRUE}: extreme imputations will be identified. These values will be replaced by imputations obtained by predictive mean matching (function \code{mice.impute.midastouch()})}
+\item{EV}{should automatic outlier handling of imputed values be enabled? Default is \code{FALSE} since version 2.0.8. Setting \code{EV = TRUE} identifies extreme imputations and replaces them by predictive mean matching draws (\code{mice.impute.midastouch()}). This is \strong{not recommended}: for count data the upper tail is part of the target distribution, not an artefact. In a simulation study (n = 500, 35 \% MAR, R = 1000) \code{EV = TRUE} biased the regression slope by -14.3 \% and reduced the coverage of the nominal 95 \% confidence interval to 79.2 \% (versus 94.1 \% with \code{EV = FALSE}). The option is retained only for reproducing earlier analyses.}
 }
 \value{
 Numeric vector of length \code{sum(!ry)} with imputations
 }
 \description{
-The functions impute multilevel count data based on a two-level Poisson or negative binomial model, either using a Bayesian regression or a bootstrap regression approach (appendix: ``\code{.boot}''). The \code{.noint} variants treat the intercept only as a fixed, but \emph{not} as a random effect. Package \pkg{glmmTMB} is used to fit the model.
+The functions impute multilevel count data based on a two-level Poisson or
+negative binomial model, either using a Bayesian regression variant or a
+cluster bootstrap variant. Since version 3.0.0 all twelve exported names
+share one engine, \code{.countimp_2l_count()}; they differ only in the
+count family, the intercept treatment and the draw.
 }
 \details{
+For counts with more zeros than a Poisson or NB law can produce, see
+\code{\link{mice.impute.2l.zinb}} (zero inflation: two ways to observe a
+zero) or \code{\link{mice.impute.2l.hnb}} (hurdle: one gate decides zero
+versus positive, and the positive part cannot be zero).
+
 Model specification details:
    \itemize{
-     \item -2 = class variable (only one class variable is allowed!)
+     \item -2 = grouping (class) variable. More than one may be coded: two
+       entries give a three-level model, e.g. pupils in classes in schools.
+       The FIRST one carries the random slopes and the \code{.noint} flag;
+       further levels enter as plain random intercepts.
      \item 0 = variable not included in imputation model
-     \item 1 = variable will be included as a fixed effect 
-     \item 2 = variable will be included as a fixed \emph{and} random effect 
+     \item 1 = variable will be included as a fixed effect
+     \item 2 = variable will be included as a fixed \emph{and} random effect
    }
 The Bayesian regression variants (see Rubin 1987, p. 169-170) consist of the following steps:
  \enumerate{
@@ -88,7 +151,9 @@ The Bayesian regression variants (see Rubin 1987, p. 169-170) consist of the fol
  \item Obtain fitted values based on b*
  \item Draw imputations for the incomplete part from appropriate distribution (Poisson or NB)
  }
-The bootstrap functions draw a bootstrap sample from \code{y[ry]} and \code{x[ry,]} (Note: we resample clusters rather than individual cases) and consist of the following steps:
+The bootstrap functions draw a bootstrap sample from \code{y[ry]} and
+\code{x[ry,]}. Note that whole clusters are resampled rather than
+individual rows, so that the two-level structure is preserved:
 \enumerate{
 \item Fit the model to the bootstrap sample
  \item Obtain fitted values
@@ -97,31 +162,31 @@ The bootstrap functions draw a bootstrap sample from \code{y[ry]} and \code{x[ry
 }
 \section{Functions}{
 \itemize{
-\item \code{mice.impute.2l.poisson}: Bayesian Poisson regression variant; random intercept
+\item \code{mice.impute.2l.poisson()}: Bayesian Poisson regression variant; random intercept
 
-\item \code{mice.impute.2l.poisson.noint}: Bayesian NB regression variant; fixed intercept
+\item \code{mice.impute.2l.poisson.noint()}: Bayesian Poisson regression variant; fixed intercept
 
-\item \code{mice.impute.2l.poisson.boot}: Bootstrap NB regression variant; random intercept
+\item \code{mice.impute.2l.poisson.boot()}: Bootstrap Poisson regression variant; random intercept
 
-\item \code{mice.impute.2l.poisson.noint.boot}: Bootstrap NB regression variant; fixed intercept
+\item \code{mice.impute.2l.poisson.noint.boot()}: Bootstrap Poisson regression variant; fixed intercept
 
-\item \code{mice.impute.2l.nb}: Bayesian NB regression variant; random intercept
+\item \code{mice.impute.2l.nb()}: Bayesian NB regression variant; random intercept
 
-\item \code{mice.impute.2l.nb.noint}: Bayesian NB regression variant; fixed intercept
+\item \code{mice.impute.2l.nb.noint()}: Bayesian NB regression variant; fixed intercept
 
-\item \code{mice.impute.2l.nb.boot}: Bootstrap NB regression variant; random intercept
+\item \code{mice.impute.2l.nb.boot()}: Bootstrap NB regression variant; random intercept
 
-\item \code{mice.impute.2l.nb.noint.boot}: Bootstrap NB regression variant; fixed intercept
+\item \code{mice.impute.2l.nb.noint.boot()}: Bootstrap NB regression variant; fixed intercept
 
-\item \code{mice.impute.2l.nb2}: identical to \code{mice.impute.2l.nb}; kept for backward compatibility
+\item \code{mice.impute.2l.nb2()}: identical to \code{mice.impute.2l.nb}; kept for backward compatibility
 
-\item \code{mice.impute.2l.nb2.noint}: identical to \code{mice.impute.2l.nb.noint}; kept for backward compatibility
+\item \code{mice.impute.2l.nb2.noint()}: identical to \code{mice.impute.2l.nb.noint}; kept for backward compatibility
 
-\item \code{mice.impute.2l.nb2.boot}: identical to \code{mice.impute.2l.nb.boot}; kept for backward compatibility
+\item \code{mice.impute.2l.nb2.boot()}: identical to \code{mice.impute.2l.nb.boot}; kept for backward compatibility
 
-\item \code{mice.impute.2l.nb2.noint.boot}: identical to \code{mice.impute.2l.nb.noint.boot}; kept for backward compatibility
+\item \code{mice.impute.2l.nb2.noint.boot()}: identical to \code{mice.impute.2l.nb.noint.boot}; kept for backward compatibility
+
 }}
-
 \author{
 Kristian Kleinke
 }
