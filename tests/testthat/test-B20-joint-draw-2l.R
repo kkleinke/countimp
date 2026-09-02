@@ -15,6 +15,7 @@
 ## exactly the spread a proper imputation must reproduce.
 
 test_that("the joint draw reproduces the posterior sd of eta", {
+  skip_on_cran()          # 7.6 s here, ~60 s on Windows, for one assertion
   skip_if_not_installed("glmmTMB")
   skip_if_not_installed("TMB")
   d <- sim_count_2l(n = 300, ngrp = 15, seed = 11)
@@ -34,6 +35,7 @@ test_that("the joint draw reproduces the posterior sd of eta", {
 })
 
 test_that("the joint draw is far wider than the beta-only route", {
+  skip_on_cran()          # 7.8 s here, ~60 s on Windows, for one assertion
   skip_if_not_installed("glmmTMB")
   skip_if_not_installed("TMB")
   d <- sim_count_2l(n = 300, ngrp = 15, seed = 11)

@@ -51,10 +51,15 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
+      # No LaTeX on these runners, and the vignette is an .Rnw, so texi2dvi
+      # would fail during the build. The `handbuch` job installs TinyTeX and
+      # checks the vignette and the reference manual there; here we check the
+      # code, the examples and the tests on every platform.
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
-          args: 'c("--no-manual", "--as-cran")'
+          build_args: 'c("--no-manual", "--no-build-vignettes")'
+          args: 'c("--no-manual", "--as-cran", "--ignore-vignettes")'
 
   # CRAN builds the PDF reference manual from the Rd files, so at least one
   # configuration has to do it too -- with a LaTeX installation. The matrix jobs
@@ -113,7 +118,8 @@ jobs:
 
       - uses: r-lib/actions/check-r-package@v2
         with:
-          args: 'c("--no-manual", "--no-build-vignettes")'
+          build_args: 'c("--no-manual", "--no-build-vignettes")'
+          args: 'c("--no-manual", "--ignore-vignettes")'
           error-on: '"warning"'
 
   # The other direction, and the one B55 came from: with mice ATTACHED, loading

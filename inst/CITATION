@@ -1,0 +1,25 @@
+citHeader("To cite countimp in publications, please use the book; add the
+package entry when the version matters for reproducing an analysis.")
+
+bibentry(
+  bibtype   = "Book",
+  title     = "Applied Multiple Imputation: Advantages, Pitfalls, New Developments and Applications in R",
+  author    = c(person("Kristian", "Kleinke"),
+                person("Jost", "Reinecke"),
+                person("Daniel", "Salfrán"),
+                person("Martin", "Spiess")),
+  year      = "2020",
+  publisher = "Springer",
+  address   = "Cham",
+  doi       = "10.1007/978-3-030-38164-6"
+)
+
+bibentry(
+  bibtype = "Manual",
+  title   = "{countimp}: Multiple Imputation of Incomplete Count Data",
+  author  = c(person("Kristian", "Kleinke"),
+              person("Jost", "Reinecke")),
+  year    = sub("-.*", "", meta$Date),
+  note    = paste("R package version", meta$Version),
+  url     = "https://github.com/kkleinke/countimp"
+)

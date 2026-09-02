@@ -351,7 +351,16 @@ testthat::test_that("B87: a singular fixed-effect covariance is named, not shown
   err <- tryCatch(suppressWarnings(countimp(d,
            method = c("2l.nb2", "", "", "", "", ""), predictorMatrix = p,
            m = 1L, maxit = 1L, printFlag = FALSE)), error = conditionMessage)
-  testthat::expect_type(err, "character")
+  ## Reaching the message requires chol(vcov(fit)$cond) to fail, and that
+  ## requires the fit NOT to converge -- the covariance is singular only
+  ## because glmmTMB stops at a non-positive-definite Hessian. Whether it does
+  ## is a property of the optimiser and the platform's BLAS, not of the data:
+  ## win-builder R-devel (x86_64-w64-mingw32, 2026-09-02) fits these data
+  ## cleanly and returns imputations, where macOS arm64 stops. Both are correct
+  ## behaviour for countimp. So the branch is tested where it is reached, and
+  ## the precondition is stated instead of assumed.
+  if (!is.character(err))
+    testthat::skip("the fit converged here, so the singular branch is not reached")
   testthat::expect_match(err, "covariance of the fixed effects is singular",
                          fixed = TRUE)
   ## names the situation the user is in -- two grouping levels, and which

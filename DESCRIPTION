@@ -1,7 +1,7 @@
 Package: countimp
 Title: Multiple Imputation of Incomplete Count Data
 Version: 3.0.1
-Date: 2026-09-01
+Date: 2026-09-02
 Authors@R: c(person("Kristian", "Kleinke", role = c("aut","cre","cph"),
     email = "mail@kristian-kleinke.de"),
     person("Jost", "Reinecke", role = c("aut", "ths"),

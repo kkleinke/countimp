@@ -40,6 +40,11 @@ b61_sim <- function(kind, n = 800, seed = 1) {
 }
 
 test_that("the generating family is recommended for six known processes", {
+  ## Six full countimp_fit_diag() runs at n = 800, each fitting every
+  ## candidate family: 76 s. The size is what the claim needs -- at a
+  ## smaller n the families stop being distinguishable and the test would
+  ## assert less than it says. Kept out of CRAN's budget, not weakened.
+  skip_on_cran()
   ## pscl is in Suggests, not in Imports: the one-level zero-inflation and
   ## hurdle methods need it, the rest of the package does not. Without this
   ## skip the test fails in an environment without Suggests -- and it fails on
@@ -56,6 +61,7 @@ test_that("the generating family is recommended for six known processes", {
 })
 
 test_that("every candidate is either ranked or given a reason", {
+  skip_on_cran()          # 64 s: fits every candidate family at n = 800
   ## pscl is in Suggests, not in Imports: the one-level zero-inflation and
   ## hurdle methods need it, the rest of the package does not. Without this
   ## skip the test fails in an environment without Suggests -- and it fails on
@@ -74,6 +80,7 @@ test_that("every candidate is either ranked or given a reason", {
 })
 
 test_that("the ZIP candidate is fitted, not silently dropped", {
+  skip_on_cran()          # 50 s: full candidate set at n = 800
   ## pscl is in Suggests, not in Imports: the one-level zero-inflation and
   ## hurdle methods need it, the rest of the package does not. Without this
   ## skip the test fails in an environment without Suggests -- and it fails on
@@ -88,6 +95,7 @@ test_that("the ZIP candidate is fitted, not silently dropped", {
 })
 
 test_that("zero-inflated candidates get the same zero-part predictors as hurdle", {
+  skip_on_cran()          # 61 s: two full candidate sets at n = 800
   ## pscl is in Suggests, not in Imports: the one-level zero-inflation and
   ## hurdle methods need it, the rest of the package does not. Without this
   ## skip the test fails in an environment without Suggests -- and it fails on
@@ -105,6 +113,7 @@ test_that("zero-inflated candidates get the same zero-part predictors as hurdle"
 })
 
 test_that("a separated zero-inflation fit is rejected, not ranked", {
+  skip_on_cran()          # 10.5 s here, ~85 s on Windows, for one assertion
   ## pscl is in Suggests, not in Imports: the one-level zero-inflation and
   ## hurdle methods need it, the rest of the package does not. Without this
   ## skip the test fails in an environment without Suggests -- and it fails on
@@ -197,6 +206,7 @@ test_that("every recommendation is a method countimp() accepts", {
 })
 
 test_that("plot() produces a rootogram panel per candidate", {
+  skip_on_cran()          # 65 s: fits every candidate, then draws it
   ## pscl is in Suggests, not in Imports: the one-level zero-inflation and
   ## hurdle methods need it, the rest of the package does not. Without this
   ## skip the test fails in an environment without Suggests -- and it fails on
