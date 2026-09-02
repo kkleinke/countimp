@@ -108,6 +108,14 @@ jobs:
         with:
           dependencies: '"hard"'
           extra-packages: any::rcmdcheck, any::testthat
+          # Its own cache key. Without one this job shares a cache with the jobs
+          # that install mice, and pulls mice back in while checking for its
+          # ABSENCE. That is what happened: the first run found no cache and was
+          # correct, the next failed on its own precondition ("mice is installed
+          # -- this job must run without it") because a parallel job had written
+          # a cache containing mice. A job that verifies an absence must not
+          # share a cache that can supply the presence.
+          cache-version: 2
 
       - name: Confirm mice is absent
         run: |
