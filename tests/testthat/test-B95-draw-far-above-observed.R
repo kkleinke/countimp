@@ -57,6 +57,11 @@ test_that("B95: the report is a flag, not a hard failure", {
 
 test_that("B95: on the data where it surfaced", {
   skip_if_not_installed("MASS")
+  ## The single-level zero-inflated and hurdle methods are fitted through
+  ## pscl, which is in Suggests. Without this the block fails on the missing
+  ## dependency instead of on the property under test -- as it did on the
+  ## no-mice CI job, which installs hard dependencies only.
+  skip_if_not_installed("pscl")
   data(crim4w)
   countimp_diagnostics(enable = TRUE)
   countimp_diagnostics(reset = TRUE)
