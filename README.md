@@ -27,6 +27,15 @@ The package brings its own imputation engine and needs no compiler. `mice` is
 *optional* -- install it only if you also need non-count imputation methods or
 `mice`'s pooling functions.
 
+If loading `countimp` warns that `glmmTMB was built with TMB package version
+...`, the installed `glmmTMB` binary was compiled against an older `TMB` than
+the one you now have. It comes from `glmmTMB`, not from `countimp`, and
+rebuilding it from source resolves it:
+
+``` r
+install.packages("glmmTMB", type = "source")
+```
+
 Specifying imputation models
 ----------------------------
 
@@ -46,6 +55,30 @@ imp <- countimp(data     = crim4w,
                 family   = nb(),
                 m = 5, maxit = 5, seed = 1)
 ```
+
+The same four models through the classic interface -- a predictor matrix and
+one method name per variable:
+
+``` r
+pred <- countimp(crim4w, maxit = 0)$predictorMatrix
+pred[, ] <- 0
+pred[c("ACRIM", "BCRIM", "CCRIM", "DCRIM"),
+     c("FEMALE", "RE", "GY", "HA")] <- 1
+
+imp <- countimp(data            = crim4w,
+                method          = c(ACRIM = "nb", BCRIM = "nb",
+                                    CCRIM = "nb", DCRIM = "nb"),
+                predictorMatrix = pred,
+                m = 5, maxit = 5, seed = 1)
+```
+
+Both calls give the same imputations, bit for bit, from the same seed. The
+difference is where the model lives: the formula carries the predictors of one
+variable next to that variable, while the matrix states them for all variables
+at once -- here by zeroing every cell and switching sixteen of them back on.
+The default fills the matrix with every other column, which for these data
+means the four counts predict each other and `id`, a person identifier, enters
+as a predictor as well.
 
 Predictor roles and the random-effects structure are read from the formula, so
 no `predictorMatrix` and no hand-picked method name are needed -- 70 of the 85
@@ -170,12 +203,16 @@ count variable and recommends one.
 
 References
 ----------
+van Buuren, S., & Groothuis-Oudshoorn, K. (2011). mice: Multivariate Imputation by Chained Equations in R. Journal of Statistical Software, 45(3), 1–67. doi: 10.18637/jss.v045.i03
+
 Kleinke, K., & Reinecke, J. (2013a). Multiple imputation of incomplete zero-inflated count data. Statistica Neerlandica, 67(3), 311–336. doi: 10.1111/stan.12009
-http://onlinelibrary.wiley.com/doi/10.1111/stan.12009/abstract
 
 Kleinke, K., & Reinecke, J. (2015a). Multiple imputation of multilevel count data. In U. Engel, B. Jann, P. Lynn, A. Scherpenzeel, and P. Sturgis (Eds.), Improving Survey Methods: Lessons from Recent Research (pp. 381–396). New York: Routledge, Taylor & Francis Group.
 http://www.psypress.com/books/details/9780415817622/
 
 Kleinke, K., & Reinecke, J. (2015b). Multiple imputation of overdispersed multilevel count data. In: Uwe Engel (Ed.), Survey Measurements. Techniques, Data Quality and Sources of Error (pp. 209–226). Frankfurt a. M.: Campus/The University of Chicago Press.
 http://press.uchicago.edu/ucp/books/book/distributed/S/bo22196267.html
+
+Kleinke, K., Reinecke, J., Salfrán, D., & Spiess, M. (2020). Applied Multiple Imputation: Advantages, Pitfalls, New Developments and Applications in R. Cham: Springer. doi: 10.1007/978-3-030-38164-6
+https://doi.org/10.1007/978-3-030-38164-6
 

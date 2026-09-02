@@ -1,4 +1,20 @@
-# note: the function was imported from package mice 2.46.0 2017-10-23
+## ===========================================================================
+## Taken from mice 2.46.0 (2017-10-23) and adapted.
+##
+## About half of this file is mice's code: the chained-equations loop
+## (mice's sampler(), here zisampler()) and the checking and padding helpers
+## around it -- is.passive, check.df, remove.lindep, updateLog,
+## check.visitSequence, check.method, check.predictorMatrix, check.data,
+## padModel, find.collinear. Measured against mice 2.46, 208 of the 401 code
+## lines in this file are word for word mice's.
+##
+## mice is licensed GPL (>= 2) and countimp GPL-3, so this is permitted.
+## Copyright for the parts that come from mice remains with its authors,
+## Stef van Buuren and Karin Groothuis-Oudshoorn.
+##
+## The adaptations exist because mice 2.46 and mice >= 3.0 disagree about the
+## shape of a mids object; see the note on chainVar/chainMean below.
+## ===========================================================================
 #' @importFrom stats var
 zisampler <-
 function (p, data, where, m, imp, r, visitSequence, fromto, printFlag,

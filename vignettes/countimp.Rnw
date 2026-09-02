@@ -403,6 +403,36 @@ countimp(d, method = c(y = "2l.poisson", classsize = "2lonly.pmm"),
             predictorMatrix = pred, m = 20)
 @
 
+\section{A warning you may see}
+\label{sec:tmb}
+
+Loading \textbf{countimp} can print a warning that names neither
+\textbf{countimp} nor anything you wrote:
+
+\begin{quote}
+\small
+\texttt{package version mismatch: glmmTMB was built with TMB package version
+1.9.21, current TMB package version is 1.9.25}
+\end{quote}
+
+\noindent
+It comes from \textbf{glmmTMB}, which \textbf{countimp} uses to fit the
+two-level models, and it means that the installed \textbf{glmmTMB} binary was
+compiled against an older \textbf{TMB} than the one now installed. TMB releases
+often --- three versions in the five months to August 2026 --- so a binary
+\textbf{glmmTMB} from a package repository and a freshly installed \textbf{TMB}
+drift apart easily. Nothing in \textbf{countimp} causes it, and rebuilding
+\textbf{glmmTMB} from source resolves it:
+
+<<tmb-mismatch, eval=FALSE>>=
+install.packages("glmmTMB", type = "source")
+@
+
+\noindent
+Until that is done the warning is repeated on every load. Whether the fitted
+models are affected is a question for \textbf{glmmTMB}, not for us: the
+mismatch is between its compiled code and TMB's headers.
+
 \section{Beyond R}
 \label{sec:kern}
 
@@ -419,6 +449,22 @@ list file naming them, and an input skeleton with the variable names and the
 \texttt{COUNT} declaration. Only the analysis model remains to be filled in.
 
 \section*{Acknowledgements}
+
+\textbf{countimp} owes its interface to \textbf{mice} (van Buuren \&
+Groothuis-Oudshoorn, 2011, \url{https://doi.org/10.18637/jss.v045.i03}).
+The method vector, the predictor matrix, the \texttt{-2} coding for a grouping
+column and the shape of the object returned are mice's conventions, and
+keeping them is why anyone who knows mice can use this package without
+learning a new interface. The chained-equations loop and the checks around it
+were taken from mice 2.46 and adapted, which is recorded at the head of the
+file that holds them; mice is licensed GPL ($\geq$~2) and countimp GPL-3, so
+this is permitted, and the debt is stated here rather than left implicit.
+
+Since version~3 the base methods for non-count variables are implemented here
+as well, so that mice is no longer required for a mixed data set. Those are
+written independently --- they follow the same published algorithms, and no
+implementation of them is shared with mice. mice's own methods remain
+reachable through \texttt{options(countimp.methods = "mice")}.
 
 The delinquency data are used with permission; see \texttt{?crim4w}.
 

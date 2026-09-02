@@ -35,8 +35,8 @@
 #' @author Kristian Kleinke
 #' @references
 #' \itemize{
-#' \item Kleinke, K., & Reinecke, J. (2013a). Multiple Imputation of incomplete zero-inflated count data. \emph{Statistica Neerlandica}, available from \url{http://onlinelibrary.wiley.com/doi/10.1111/stan.12009/abstract}.
-#' \item Kleinke, K., & Reinecke, J. (2013b). \emph{countimp 1.0 -- A multiple imputation package for incomplete count data} [Technical Report]. University of Bielefeld, Faculty of Sociology, available from \url{www.uni-bielefeld.de/soz/kds/pdf/countimp.pdf}.
+#' \item Kleinke, K., & Reinecke, J. (2013a). Multiple imputation of incomplete zero-inflated count data. \emph{Statistica Neerlandica}, 67(3), 311-336. \doi{10.1111/stan.12009}
+#' \item Kleinke, K., & Reinecke, J. (2013b). \emph{countimp 1.0 -- A multiple imputation package for incomplete count data} [Technical Report]. University of Bielefeld, Faculty of Sociology.
 #' \item Rubin, D. B. (1987). \emph{Multiple imputation for nonresponse in surveys}. New York: Wiley.
 #' \item Zeileis, A., Kleiber, C., & Jackman, S. (2008). Regression models for count data in R. \emph{Journal of Statistical Software}, 27(8), 1-25.
 #'} 

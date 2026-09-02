@@ -5,7 +5,11 @@ Date: 2026-09-01
 Authors@R: c(person("Kristian", "Kleinke", role = c("aut","cre","cph"),
     email = "mail@kristian-kleinke.de"),
     person("Jost", "Reinecke", role = c("aut", "ths"),
-    email = "jost.reinecke@uni-bielefeld.de"))
+    email = "jost.reinecke@uni-bielefeld.de"),
+    person("Stef", "van Buuren", role = "ctb",
+    comment = "author of mice, from which the chained-equations loop in zisampler.R was adapted"),
+    person("Karin", "Groothuis-Oudshoorn", role = "ctb",
+    comment = "author of mice, from which the chained-equations loop in zisampler.R was adapted"))
 Description: Multiple imputation of incomplete count data: ordinary,
     overdispersed, zero-inflated and hurdle counts, for single-level and
     two-level (clustered) data. Imputation models are specified either through
