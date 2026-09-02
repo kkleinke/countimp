@@ -290,7 +290,9 @@ test_that("B90: grouping by the right level still works", {
   set.seed(11)
   imp <- suppressWarnings(countimp(d, method = c(budget = "2lonly.pois"),
            predictorMatrix = p, m = 2L, maxit = 1L, printFlag = FALSE))
-  cd <- mice::complete(imp, 1L)
+  ## countimp's own accessor, not mice's: mice is in Suggests, and this
+  ## block does not otherwise need it. The two return identical frames.
+  cd <- countimp_complete(imp, 1L)
   ## the outermost level wins, so every school keeps ONE budget
   je_schule <- tapply(cd$budget, cd$school, function(z) length(unique(z)))
   expect_equal(max(je_schule), 1L)
