@@ -1,0 +1,168 @@
+# Runs in kkleinke/countimp, where the package sits at the repository root.
+#
+# The full matrix runs on every push. In the working repository that would be
+# expensive -- GitHub bills macOS tenfold and Windows twofold, and six pushes
+# once used up a month's 2000 minutes -- but kkleinke/countimp is public, and
+# public repositories are not billed for Actions minutes. So the platforms CRAN
+# checks on are all covered here, r-devel and oldrel included.
+#
+# NOT_CRAN is left at what r-lib/actions sets (true), so the suite runs whole,
+# including the five fit_diag blocks that skip_on_cran() holds back from CRAN.
+"on":
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+name: R-CMD-check
+
+jobs:
+  R-CMD-check:
+    runs-on: ${{ matrix.config.os }}
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macos-latest,   r: 'release'}
+          - {os: windows-latest, r: 'release'}
+          - {os: ubuntu-latest,  r: 'devel', http-user-agent: 'release'}
+          - {os: ubuntu-latest,  r: 'release'}
+          - {os: ubuntu-latest,  r: 'oldrel-1'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+          args: 'c("--no-manual", "--as-cran")'
+
+  # CRAN builds the PDF reference manual from the Rd files, so at least one
+  # configuration has to do it too -- with a LaTeX installation. The matrix jobs
+  # above pass --no-manual because installing TeX on five runners costs more than
+  # it buys; Rd problems show up on this one.
+  handbuch:
+    runs-on: ubuntu-latest
+    name: reference manual (LaTeX)
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-tinytex@v2
+      - run: tlmgr install inconsolata times helvetic makeindex
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          args: 'c("--as-cran")'
+          error-on: '"warning"'
+
+  # countimp must work without mice installed -- mice is in Suggests only.
+  # This job installs hard dependencies only, so mice is deliberately absent.
+  no-mice:
+    runs-on: ubuntu-latest
+    name: without mice (Suggests absent)
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      _R_CHECK_FORCE_SUGGESTS_: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          dependencies: '"hard"'
+          extra-packages: any::rcmdcheck, any::testthat
+
+      - name: Confirm mice is absent
+        run: |
+          if (requireNamespace("mice", quietly = TRUE))
+            stop("mice is installed -- this job must run without it")
+          cat("mice absent, as required\n")
+        shell: Rscript {0}
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          args: 'c("--no-manual", "--no-build-vignettes")'
+          error-on: '"warning"'
+
+  # The other direction, and the one B55 came from: with mice ATTACHED, loading
+  # countimp must not displace mice's S3 methods. The matrix jobs above install
+  # mice but never attach it before countimp, so the defect was invisible there.
+  mit-mice:
+    runs-on: ubuntu-latest
+    name: with mice attached (S3 separation)
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::mice, any::testthat, any::devtools
+          needs: check
+      - name: Loading countimp must not overwrite mice's methods
+        run: |
+          library(mice)
+          vorher <- list(with = getS3method("with", "mids"),
+                         print = getS3method("print", "mira"),
+                         summary = getS3method("summary", "mira"))
+          meldungen <- character()
+          withCallingHandlers(
+            devtools::load_all(".", quiet = TRUE),
+            message = function(m) meldungen <<- c(meldungen, conditionMessage(m))
+          )
+          if (any(grepl("overwritten", meldungen, fixed = TRUE)))
+            stop("countimp overwrites S3 methods of another package:\n",
+                 paste(grep("overwritten", meldungen, value = TRUE), collapse = ""))
+          nachher <- list(with = getS3method("with", "mids"),
+                          print = getS3method("print", "mira"),
+                          summary = getS3method("summary", "mira"))
+          for (nm in names(vorher))
+            if (!identical(vorher[[nm]], nachher[[nm]]))
+              stop("mice's method for ", nm, " changed when countimp was loaded")
+          cat("mice's S3 methods unchanged\n")
+        shell: Rscript {0}
+      - name: Test suite with mice attached
+        run: |
+          library(mice)
+          library(testthat)
+          devtools::load_all(".", quiet = TRUE)
+          r <- as.data.frame(test_dir("tests/testthat", reporter = "summary",
+                                      stop_on_failure = FALSE, package = "countimp"))
+          cat(sprintf("passed=%d failed=%d skipped=%d\n",
+                      sum(r$passed), sum(r$failed), sum(r$skipped)))
+          if (sum(r$failed) > 0L) stop("failures with mice attached")
+        shell: Rscript {0}
