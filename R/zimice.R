@@ -11,6 +11,15 @@ function (data, m = 5, method = vector("character", length = ncol(data)),
   call <- match.call()
   if (!is.na(seed))
     set.seed(seed)
+  ## The object records .Random.seed at the end, and in a fresh session that
+  ## object does not exist until something draws a random number. Where there
+  ## is nothing to impute, nothing draws, and the run died on
+  ## "object '.Random.seed' not found" -- after doing its work, at the point
+  ## where it assembles the result. mice has the same defect (3.19 still fails
+  ## here). Initialising the stream costs one draw and makes the field always
+  ## readable.
+  if (!exists(".Random.seed", envir = globalenv(), inherits = FALSE))
+    stats::runif(1L)
   if (!(is.matrix(data) || is.data.frame(data)))
     stop("Data should be a matrix or data frame")
   nvar <- ncol(data)

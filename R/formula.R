@@ -624,6 +624,23 @@ countimp_spec <- function(data, formulas, zero = NULL,
     res <- .countimp_method_name(fam, cnt, zro, draw)
     method[y] <- res$method
     ty <- .countimp_build_type(cnt, if (fam$twopart) zro else NULL, varnames)
+    ## .countimp_build_type() always emits the TWO-level codes (3 = count part
+    ## only, 5 = zero part only). The single-level two-part methods read mice's
+    ## older coding through .countimp_zi_formula(), where 2 is the count part
+    ## and 3 the ZERO part -- the opposite meaning for 3, and no meaning at all
+    ## for 5. Left untranslated, `zero = ~ z1` with zi_poisson() and its three
+    ## siblings fitted Y ~ 1 | x1 + x2: the count predictors moved into the zero
+    ## part, the zero predictor was dropped, and nothing was reported. Measured
+    ## on 8 Sep 2026; pscl::zeroinfl really was called with that formula.
+    ##
+    ## Translating here rather than widening .countimp_zi_formula(): code 3
+    ## cannot mean both parts at once, and the classic route's 2/3 coding is
+    ## what existing scripts pass in.
+    if (fam$twopart && !isTRUE(cnt$twolevel)) {
+      vorher <- ty
+      ty[vorher == 3L] <- 2L    # count part only
+      ty[vorher == 5L] <- 3L    # zero part only
+    }
     types[[y]] <- ty
     pred[y, ] <- ifelse(ty != 0L, 1L, 0L)
     pred[y, y] <- 0L

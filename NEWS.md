@@ -1,3 +1,37 @@
+# countimp 3.0.2
+
+**Behaviour change, and a silent one until now: `zero` with a single-level
+two-part family fitted the wrong model.** A call such as
+
+``` r
+countimp(d, formulas = list(y ~ x1 + x2), zero = ~ z1, family = zi_poisson())
+```
+
+fitted `y ~ 1 | x1 + x2`. The count part lost every predictor, `x1` and `x2`
+moved into the zero part, and `z1` was dropped altogether. All four single-level
+two-part families were affected -- `zi_poisson`, `zi_nb`, `hurdle_poisson`,
+`hurdle_nb` -- and only when `zero` was given. Nothing reported it: the method
+name stayed correct, no warning was raised, and the defect was visible only in
+the fitted model.
+
+The cause was a coding collision. The formula route emits the two-level type
+codes, where 3 marks the count part and 5 the zero part; the single-level
+methods read mice's older coding, where 3 marks the *zero* part and 5 means
+nothing. The route now translates for them.
+
+**If you specified a single-level zero-inflated or hurdle model through
+`formulas` together with `zero`, those imputations were drawn from the wrong
+model and the analysis should be repeated.** Unaffected: the same models through
+`method` + `predictorMatrix`, the formula route without `zero`, and every
+two-level method -- the two-level route was correct throughout.
+
+* **`countimp()` no longer fails on a data set with nothing to impute.** In a
+  fresh session it read `.Random.seed` while assembling its result, and that
+  object does not exist until something draws a random number -- so a run with
+  no missing values died after doing its work, with
+  `object '.Random.seed' not found`. Inherited from mice, which still fails the
+  same way.
+
 # countimp 3.0.1
 
 **Behaviour change: the imputations of every `2l.*.boot` method are different
