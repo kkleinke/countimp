@@ -11,7 +11,15 @@
 
 test_that("B98: a complete data set does not need an existing .Random.seed", {
   skip_on_cran()                      # starts a second R process
+  ## The check needs a FRESH R process -- the stream exists long before any
+  ## test runs -- and a fresh process can only reach an INSTALLED package.
+  ## Where countimp is sourced instead (devtools::load_all, as the mice job in
+  ## CI does), there is nothing for the child to load, and the block would fail
+  ## on that rather than on what it tests.
   bib <- .libPaths()
+  skip_if(!any(vapply(bib, function(p) dir.exists(file.path(p, "countimp")),
+                      logical(1))),
+          "countimp is sourced, not installed; the child process cannot load it")
   skript <- tempfile(fileext = ".R")
   writeLines(c(
     sprintf(".libPaths(%s)", paste0("c(", paste(sprintf('"%s"', bib), collapse = ", "), ")")),
