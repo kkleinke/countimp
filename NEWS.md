@@ -1,3 +1,20 @@
+# countimp 3.0.3
+
+* **A grouping term with very few levels now warns.** `y ~ x | z` is how `pscl`
+  writes `count | zero`, but in an R formula `|` is the grouping operator, so
+  countimp read it as a random effect over `z` and chose a two-level method --
+  with a dichotomous `z`, a random effect over two clusters. Nothing said so;
+  `glmmTMB` reported a non-positive-definite Hessian, which names the
+  arithmetic rather than the mistake. Below five levels countimp now says which
+  method it chose and points at the `zero` argument. The choice itself is
+  unchanged: the warning explains, it does not override.
+
+* `?countimp` said "the available choices" and then listed six of the thirteen
+  families. All thirteen are named now.
+
+* `options(countimp.check.args = FALSE)` is documented, beside the other two
+  options on the same help page.
+
 # countimp 3.0.2
 
 **Behaviour change, and a silent one until now: `zero` with a single-level

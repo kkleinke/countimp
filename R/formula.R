@@ -623,6 +623,26 @@ countimp_spec <- function(data, formulas, zero = NULL,
 
     res <- .countimp_method_name(fam, cnt, zro, draw)
     method[y] <- res$method
+
+    ## A grouping term with very few levels is almost always a mistyped
+    ## two-part model. In an R formula `|` is the grouping operator, so
+    ## `y ~ x | z` -- pscl's way of writing count | zero -- is read here as a
+    ## random effect over the levels of z, and a two-level method is chosen
+    ## without a word. With a dichotomous z that is a random effect over TWO
+    ## clusters. glmmTMB then reports a non-positive-definite Hessian, which
+    ## names the arithmetic and not the mistake.
+    for (g in cnt$group) {
+      if (!g %in% names(data)) next
+      n_lev <- length(unique(stats::na.omit(data[[g]])))
+      if (n_lev < 5L)
+        warning("countimp: the grouping term (1 | ", g, ") has only ", n_lev,
+                " level", if (n_lev != 1L) "s" else "",
+                ", so the two-level method \"", res$method, "\"\n  was ",
+                "selected for ", y, ". If you meant the second part of a ",
+                "two-part model,\n  use the `zero` argument -- in an R formula ",
+                "`|` is the grouping operator,\n  not pscl's model separator.",
+                call. = FALSE)
+    }
     ty <- .countimp_build_type(cnt, if (fam$twopart) zro else NULL, varnames)
     ## .countimp_build_type() always emits the TWO-level codes (3 = count part
     ## only, 5 = zero part only). The single-level two-part methods read mice's

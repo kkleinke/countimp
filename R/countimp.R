@@ -31,9 +31,13 @@
 #'       \code{id} and selects the corresponding multilevel method.}
 #'     \item{\code{family}}{A single family specification or a named list with
 #'       one entry per formula. See \code{\link{countimp_families}} for the
-#'       available choices: \code{\link{poisson_count}}, \code{\link{nb}},
-#'       \code{\link{zi_poisson}}, \code{\link{zi_nb}},
-#'       \code{\link{hurdle_poisson}} and \code{\link{hurdle_nb}}.}
+#'       available choices. Thirteen in all: \code{\link{poisson_count}},
+#'       \code{\link{nb}}, \code{\link{zi_poisson}}, \code{\link{zi_nb}},
+#'       \code{\link{hurdle_poisson}}, \code{\link{hurdle_nb}},
+#'       \code{\link{compois}}, \code{\link{zerotrunc_poisson}},
+#'       \code{\link{zerotrunc_nb}}, \code{\link{censored_poisson}},
+#'       \code{\link{censored_nb}}, \code{\link{bounded_poisson}} and
+#'       \code{\link{bounded_nb}}.}
 #'     \item{\code{zero}}{The second model part of a two-part family --
 #'       the inflation part of \code{zi_poisson()}/\code{zi_nb()}, the hurdle
 #'       of \code{hurdle_poisson()}/\code{hurdle_nb()}. Omitting it reuses the
@@ -69,6 +73,13 @@
 #' \code{options(countimp.check.levels = FALSE)}, which restores the old
 #' behaviour; measured on 60 classes with 20\% of the classes missing their
 #' class variable, that behaviour destroyed the constancy in 12 of them.
+#'
+#' A third option governs argument checking. An argument the engine does not
+#' know is an error rather than a silent omission -- \code{ignore =} was once
+#' routed to \code{mice}, honoured there, and would have been dropped without
+#' a word. \code{options(countimp.check.args = FALSE)} passes unknown names
+#' through instead, for the case where a method takes an argument this package
+#' does not list.
 #'
 #' Predictors of any level are \emph{used} without special treatment: a
 #' cluster-level covariate is simply a column that happens to be constant
