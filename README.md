@@ -3,7 +3,7 @@ countimp: Multiple Imputation of Incomplete Count Data
 
 Further information
 -------------------
-[https://kristian-kleinke.de/appliedmi.html#r-package-countimp---multiple-imputation-of-incomplete-count-data](https://kristian-kleinke.de/appliedmi.html#r-package-countimp---multiple-imputation-of-incomplete-count-data)
+[https://kleinke.net/software/countimp.html](https://kleinke.net/software/countimp.html)
 
 User's Guide
 -------------------
