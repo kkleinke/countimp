@@ -8,7 +8,7 @@ Further information
 User's Guide
 -------------------
 
-[https://kristian-kleinke.de/countimp](https://kristian-kleinke.de/countimp/)
+[https://countimp.kleinke.net](https://countimp.kleinke.net/)
 
 The guide and the manual still describe version 2.x and are being revised. For
 version 3, the help pages and `vignette("countimp")` are the current reference.
