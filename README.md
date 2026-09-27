@@ -14,8 +14,7 @@ The guide describes version 3. The manual for version 2 is archived at
 [https://countimp.kleinke.net/v2/](https://countimp.kleinke.net/v2/).
 
 The help pages and `vignette("countimp")` cover the same ground more briefly.
-Note that `install_github()` does not build vignettes unless asked, so add
-`build_vignettes = TRUE` if you want that one.
+The vignette is only installed if `build_vignettes = TRUE` is passed, as below.
 
 Installation
 ------------
@@ -24,7 +23,7 @@ Installation
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("kkleinke/countimp")
+remotes::install_github("kkleinke/countimp", build_vignettes = TRUE)
 ```
 
 The package brings its own imputation engine and needs no compiler. `mice` is
