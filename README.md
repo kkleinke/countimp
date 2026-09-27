@@ -137,9 +137,11 @@ countimp(d, formulas = list(y ~ x1 + (1 | school) + (1 | class)),
 No new method name is involved: the levels travel in the type codes, so
 `2l.poisson` and its relatives fit two, three or more levels. The first
 grouping term carries the random slopes; further terms enter as random
-intercepts. The `.boot` variants are two-level only for now -- a nested design
-needs hierarchical resampling, and they say so rather than resampling the outer
-level alone.
+intercepts. The `.boot` variants resample whole clusters of the **outermost**
+grouping level, which carries the levels nested inside it along. Where the
+grouping factors are crossed rather than nested there is no such level, and
+they stop and point at the Bayesian variant instead of resampling one factor
+and breaking the other's design.
 
 The two interfaces are mutually exclusive: `formulas` together with `method` or
 `predictorMatrix` is an error.
