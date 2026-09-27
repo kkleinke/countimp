@@ -135,7 +135,7 @@ countimp(d, formulas = list(y ~ x1 + (1 | school) + (1 | class)),
 ```
 
 No new method name is involved: the levels travel in the type codes, so
-`2l.poisson` and its relatives fit two, three or more levels. The first
+`2l.poisson` and its relatives fit two and three levels. The first
 grouping term carries the random slopes; further terms enter as random
 intercepts. The `.boot` variants resample whole clusters of the **outermost**
 grouping level, which carries the levels nested inside it along. Where the
