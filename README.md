@@ -10,8 +10,12 @@ User's Guide
 
 [https://countimp.kleinke.net](https://countimp.kleinke.net/)
 
-The guide and the manual still describe version 2.x and are being revised. For
-version 3, the help pages and `vignette("countimp")` are the current reference.
+The guide describes version 3. The manual for version 2 is archived at
+[https://countimp.kleinke.net/v2/](https://countimp.kleinke.net/v2/).
+
+The help pages and `vignette("countimp")` cover the same ground more briefly.
+Note that `install_github()` does not build vignettes unless asked, so add
+`build_vignettes = TRUE` if you want that one.
 
 Installation
 ------------
